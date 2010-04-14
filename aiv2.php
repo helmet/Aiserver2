@@ -940,7 +940,7 @@ class aiv2 {
             // Received a new connection!
             if (in_array($this->socket, $read)) {
                 for ($i = 1; $i <= $this->maxconnections; $i++) {
-                    if (!isSet($this->players[$i])) {
+                    if (!isSet($this->players[$i]) && $this->connections != $this->maxconnections) {
                         $this->connections++;
                         $player = $this->addplayer($i);
                         $player->socket = socket_accept($this->socket);
@@ -953,6 +953,7 @@ class aiv2 {
                         $remove = socket_accept($this->socket);
                         socket_write($remove, "AIEngine:\r\nYou have been removed of this server: The server is full!");
                         socket_close($remove);
+                        break;
                     }
                 }
                 if (--$ready <= 0) {
@@ -1048,7 +1049,6 @@ class aiv2 {
         }
         else {
             $id = $player->id;
-            if ($id == $this->highest_connect) { $this->highest_connect--; }
             if (isSet($player->socket)) {
                 socket_close($player->socket);
                 $player->socket = null;
