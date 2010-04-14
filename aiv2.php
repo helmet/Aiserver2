@@ -893,7 +893,7 @@ class aiv2 {
     static $version = 2.05;
     public $connections;
     public $players = array();
-    public $port = 22;
+    public $port = 8000;
     public $bindip = '127.0.0.1';
     public $maxconnections = null;
     private $socket;
@@ -1107,5 +1107,5 @@ class aiv2 {
 
 $poker = new poker;
 # Poker rules: 2 players, $25, big blind $2, small blind $1, 100 hands 
-$poker->setRules(2, 25, 2, 1, 33);
+$poker->setRules(2, 25, 2, 1, 100);
 ?>

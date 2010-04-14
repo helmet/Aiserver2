@@ -1,0 +1,25 @@
+AIserver2
+(C) 2010 Patrick Mennen <helmet@helmet.nl>
+
+AIServer2 is a small but handy platform that allows developers to create their
+own socket-based games. It was custom-built for a schoolproject on Tilburg
+University for the course Computer Games.
+
+The Texas Hold`em module included servers both as an example and as my
+end-project for this course. It allows multiple clients to play a game of Poker
+and is intended to provide future students with a platform on which their
+programs can compete against eachother.
+
+FAQ:
+1.  Which PHPVersion is required to run this application?
+    This application makes extensive use of the OOP-implementation
+    which was introduced in PHP5. The application was tested with PHP5.3
+
+2.  How do I enable sockets in PHP?
+    Locate your php.ini and browse to the extensions section
+    for windows users you need to uncomment the line:
+    ;extension=php_sockets.dll -> extension=php_sockets.dll
+
+    for *nix/apple users the extension is called php_sockets.so
+
+--EOF--
