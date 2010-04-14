@@ -65,7 +65,7 @@ class poker extends aiv2 {
                 */
                 $this->turntimer = 0;
                 $player = $this->players[$this->turn];
-                $this->broadcast(sprintf("Player %d has waited too long and is forced to fold!", $player->id));
+                $this->broadcast(sprintf("%s has waited too long and is forced to fold!", $this->playerName($player)));
                 $this->playerFold($player);
             }
         }
@@ -114,6 +114,17 @@ class poker extends aiv2 {
             }
         }
         return false;
+    }
+
+    /*
+     * playerName
+     * ---
+     * Returns the players name if it was set using the name command, otherwise returns Player X
+     */
+    function playerName($player)
+    {
+        if ($player->name) { return ucfirst($player->name); }
+        else { return sprintf("Player %d", $player->id); }
     }
 
     /*
@@ -426,7 +437,7 @@ class poker extends aiv2 {
             return false;
         }
 
-        $this->broadcast(sprintf("Player %d has won the hand and won the pot of $%0.2f!", $player->id, $this->pot), $player);
+        $this->broadcast(sprintf("%s has won the hand and won the pot of $%0.2f!", $this->playerName($player), $this->pot), $player);
         $player->money += $this->pot;
         $this->send($player, sprintf("You won the pot of $%0.2f and now have $%0.2f", $this->pot, $player->money));
         # If we are not at the amount of hands played, start a new game!
@@ -444,7 +455,7 @@ class poker extends aiv2 {
     private function playerFold($player) {
         $this->fold++;
         $this->broadcast(sprintf("P%d=FOLD", $player->id));
-        $this->broadcast(sprintf("Player %d folds.", $player->id));
+        $this->broadcast(sprintf("%s folds.", $this->playerName($player)));
         $player->fold = true;
         #$this->players[$player->id] = $player;
         $players_left = $this->playersingame - $this->fold;
@@ -494,7 +505,7 @@ class poker extends aiv2 {
                         else {
                             $player->money -= $bet;
                             $this->pot+= $bet;
-                            $this->broadcast(sprintf("Player %d CALLS the bet", $player->id));
+                            $this->broadcast(sprintf("%s CALLS the bet", $this->playerName($player)));
                             $this->playercalls[$player->id] = true;
                             $this->nextTurn();
                         }
@@ -522,7 +533,7 @@ class poker extends aiv2 {
                         $bet = $this->getbet();
                         if ($player->money >= $bet) {
                             $this->bet = true;
-                            $this->broadcast(sprintf("Player %d places a bet of $%0.2f", $player->id, $bet));
+                            $this->broadcast(sprintf("%s places a bet of $%0.2f", $this->playerName($player), $bet));
                             $player->money -= $bet;
                             $this->pot += $bet;
                             $this->resetplayercalls();
@@ -564,7 +575,7 @@ class poker extends aiv2 {
                             $this->pot += $money;
                             $player->raiseturn = true;
                             $this->raises++;
-                            $this->broadcast(sprintf("Player %d calls the current bet and raises with $%0.2f", $player->id, $money));
+                            $this->broadcast(sprintf("%s calls the current bet and raises with $%0.2f", $this->playerName($player), $money));
                             $this->resetplayercalls();
                             $this->playercalls[$player->id] = true;
                             $this->nextTurn();
@@ -598,7 +609,7 @@ class poker extends aiv2 {
                         else {
                             $this->pot += $bet;
                             $player->money -= $bet;
-                            $this->broadcast(sprintf("Player %d CHECKS and automatically called the big blind", $player->id));
+                            $this->broadcast(sprintf("%s CHECKS and automatically called the big blind", $this->playerName($player)));
                             $this->playercalls[$player->id] = true;
                             $this->nextTurn();
                         }
@@ -607,7 +618,7 @@ class poker extends aiv2 {
 
                     $player->checks++;
                     $this->broadcast(sprintf("P%d=CHECK", $player->id));
-                    $this->broadcast(sprintf("Player %d checks", $player->id));
+                    $this->broadcast(sprintf("%s checks", $this->playerName($player)));
                     $this->playercalls[$player->id] = true;
                     $this->nextTurn();
                 }
@@ -733,7 +744,7 @@ class poker extends aiv2 {
                 $player->money -= $blind;
                 $this->pot += $blind;
                 $this->broadcast("SB=%d", $player->id);
-                $this->broadcast(sprintf("Player %d has paid the %s blind", $player->id, $i == 0 ? 'SMALL' : 'BIG'), $player);
+                $this->broadcast(sprintf("%s has paid the %s blind", $this->playerName($player), $i == 0 ? 'SMALL' : 'BIG'), $player);
                 $this->send($player, sprintf("You paid the %s blind and have $%0.2f left", $i == 0 ? 'SMALL' : 'BIG', $player->money));
                 $this->playerblinds[$i] = $player->id;
                 $i++;
@@ -817,7 +828,7 @@ class poker extends aiv2 {
                     $playercards = array_merge($pl->cards, $this->gamecardstable);
                     $score = $this->calcPoker($playercards);
                     $scores[$pl->id] = $score;
-                    $this->broadcast(sprintf("Player %d has a score of %0.2f", $pl->id, $score));
+                    $this->broadcast(sprintf("%s has a score of %0.2f", $this->playerName($player), $score));
                 }
                 return;
                 
