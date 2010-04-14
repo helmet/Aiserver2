@@ -1,5 +1,4 @@
 <?php
-
 /*
  * Basic player class holding variables not relevant to any game
 */
@@ -401,7 +400,7 @@ class poker extends aiv2 {
         $player->money = $this->playermoney;
         $this->players[$playerid] = $player;
         if ($this->spots != $this->connections) {
-            // Provided the connected members with a message that our game is waiting for x more player(s)
+            // Provide the connected members with a message that our game is waiting for x more player(s)
             $required = $this->spots - $this->connections;
             parent :: broadcast(sprintf("[SERVER] The game is waiting for %d more player%s", $required, $required != 1 ? 's' : ''));
         }
@@ -830,6 +829,8 @@ class poker extends aiv2 {
                     $scores[$pl->id] = $score;
                     $this->broadcast(sprintf("Player %d has a score of %0.2f", $pl->id, $score));
                 }
+                return;
+                
                 break;
 
         }
@@ -925,7 +926,7 @@ class aiv2 {
 
             # checks function is executed on every loop!
             // Reading from already connected clients
-            for ($i = 1; $i <= $this->connections; $i++) {
+            for ($i = 1; $i <= $this->maxconnections; $i++) {
                 if (isSet($this->players[$i]) && is_object($this->players[$i])) {
                     $player = $this->players[$i];
                     if (isSet($player->socket) && !empty($player->socket)) {
@@ -1047,6 +1048,7 @@ class aiv2 {
         }
         else {
             $id = $player->id;
+            if ($id == $this->highest_connect) { $this->highest_connect--; }
             if (isSet($player->socket)) {
                 socket_close($player->socket);
                 $player->socket = null;
