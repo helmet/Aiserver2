@@ -30,7 +30,6 @@ class poker extends aiv2 {
     public $gamecardstable = array();
     public $deck;
     public $pot;
-    public $maxraises;
     public $raises = null;
     public $bet = false;
     public $betamount = false;
@@ -39,6 +38,7 @@ class poker extends aiv2 {
     public $playersingame;
     public $newgame = false;
     public $playercalls = array();
+    public $pots = array();
 
     public function __construct() {
         parent :: __construct();
@@ -376,7 +376,7 @@ class poker extends aiv2 {
      * setRules
      * Sets up the rules and the amount of hands played for each game!
     */
-    public function setRules($players = 2, $playermoney  = 10, $bigblind = 1, $smallblind = .5, $games =5, $maxraises = 3) {
+    public function setRules($players = 2, $playermoney  = 10, $bigblind = 1, $smallblind = .5, $games =5) {
         if ($players < 2) {
             printf("I'm sorry to report that Texas Hold `em requires at least 2 players.\n");
             return;
@@ -390,7 +390,6 @@ class poker extends aiv2 {
         $this->bigblind = $bigblind;
         $this->smallblind = $smallblind;
         $this->totalgames = $games;
-        $this->maxraises = $maxraises;
         # Have the server accept recipients
         parent :: acceptclients($players);
     }
@@ -425,7 +424,7 @@ class poker extends aiv2 {
         $this->send($player, "Texas Hold`em module - (C) 2010 Patrick Mennen <helmet@helmet.nl>\r\n");
         $this->send($player, "You are playing Texas Hold`em (Limit!) using the following rules:\r\n");
         $this->send($player, sprintf("- Players: %d\r\n- Big blind: %0.2f\r\n- Small blind: %0.2f\r\n- Games: %d\r\n\r\nYou receive $%0.2f\r\n", $this->spots, $this->bigblind, $this->smallblind, $this->totalgames,$this->playermoney));
-        $this->send($player, sprintf("RS=%d,%0.2f,%0.2f,%0.2f,%d,%d", $this->spots, $this->playermoney, $this->bigblind, $this->smallblind, $this->totalgames, $this->maxraises));
+        $this->send($player, sprintf("RS=%d,%0.2f,%0.2f,%0.2f,%d", $this->spots, $this->playermoney, $this->bigblind, $this->smallblind, $this->totalgames));
     }
 
     /*
@@ -564,9 +563,8 @@ class poker extends aiv2 {
                         $this->send($player, "There are no previous bets! would you like to BET?");
                     }
                     else {
-                        if ($this->raises == $this->maxraises)
-                        {
-                            $this->send($player, "Error: you can not raise this bet use either CALL or FOLD!");
+                        if ($player->raiseturn) {
+                            $this->send($player, "You have already raised this turn and can only CALL or FOLD");
                             break;
                         }
                         $money = $this->getbet();
@@ -575,6 +573,7 @@ class poker extends aiv2 {
                             $this->betamount += $money;
                             $player->money -= $money;
                             $this->pot += $money;
+                            $player->raiseturn = true;
                             $this->raises++;
                             $this->broadcast(sprintf("Player %d calls the current bet and raises with $%0.2f", $player->id, $money));
                             $this->resetplayercalls();
@@ -707,6 +706,7 @@ class poker extends aiv2 {
         foreach ($this->players as $i => $pl) {
             $pl->fold = false;
             $pl->cards = array();
+            $pl->raiseturn = false;
         }
         $this->resetplayercalls();
     }
@@ -736,6 +736,9 @@ class poker extends aiv2 {
 
         while ($i < 2) {
             $player = $this->getNextPlayer($this->playerblinds[$i]);
+            if ($i == 0) {
+                $this->starter = $player;
+            }
             $blind = $i == 0 ? $this->smallblind : $this->bigblind;
             if ($player->money >= $i) {
                 $player->money -= $blind;
@@ -842,12 +845,12 @@ class poker extends aiv2 {
 
         if (array_sum($this->playercalls) == $this->playersingame) {
             $this->progress();
-            $this->turn = $this->starter;
-            $pl = $this->players[$this->starter];
-            if ($pl->out == true || $player->fold == true)
-            {
-                $player = $this->getNextPlayer($player->id);
-            }
+
+            //$player = $this->getNextPlayer($player->id);
+            $pl = $this->starter ;
+            $pl = $this->players[$pl];
+            //print_r($this->players);
+            print_r($pl);
             return;
         }
         $player = $this->getNextPlayer($this->turn);
@@ -869,6 +872,7 @@ class pokerplayer extends player {
     public $fold = false;
     public $out = false;
     public $cards = array();
+    public $raiseturn = false;
     // Statistical information is stored per player
     public $bets;
     public $folds;
@@ -1100,6 +1104,6 @@ class aiv2 {
 }
 
 $poker = new poker;
-# Poker rules: 2 players, $25, big blind $2, small blind $1, 100 hands and 3 maximal raises per turn
-$poker->setRules(2, 25, 2, 1, 33, 3);
+# Poker rules: 2 players, $25, big blind $2, small blind $1, 100 hands 
+$poker->setRules(2, 25, 2, 1, 33);
 ?>
