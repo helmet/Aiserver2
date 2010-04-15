@@ -33,7 +33,7 @@ class poker extends aiv2 {
         parent :: __construct();
         printf ("Loaded the Texas Hold `em Module succesfully!\n");
 
-        # Generate the deck only has to be done once
+# Generate the deck only has to be done once
         $types = array('spades', 'clubs', 'hearts', 'diamonds');
         $cards = array(2,3,4,5,6,7,8,9,10,'Jack', 'Queen', 'King', 'Ace');
         $deck = array();
@@ -46,17 +46,17 @@ class poker extends aiv2 {
         $this->deck = $deck;
     }
 
-    // Heartbeat
-    // Checks if a player takes too long about his turn or whenever we can start the
-    // game
+// Heartbeat
+// Checks if a player takes too long about his turn or whenever we can start the
+// game
     public function heartbeat() {
-        // This is where the game logic is done, whenever the game is full
-        // Start a new game
+// This is where the game logic is done, whenever the game is full
+// Start a new game
         if ( ($this->spots == $this->connections) && $this->game == 0) {
             $this->startgame();
         }
 
-        // Time the player's turns
+// Time the player's turns
         if ($this->turn) {
             $this->turntimer++;
             if ($this->turntimer == 5) {
@@ -70,7 +70,7 @@ class poker extends aiv2 {
             }
         }
 
-        // New game ?
+// New game ?
         if ($this->newgame == true) {
             $this->startgame();
             $this->newgame = false;
@@ -91,13 +91,17 @@ class poker extends aiv2 {
             return false;
         }
         # Make sure our array doesn't go out of bounds
-        for ($i = 0; $i < $possible; $i++) {
+        for ($i = 0;
+        $i < $possible;
+        $i++) {
             $start = $cards[$i];
             $straightcards = array();
             $straightcards[] = $start;
             $expect = $cards[$i] -1;
             // We need four cards to match below the card we have
-            for ($j = 1; $j <= 4; $j++) {
+            for ($j = 1;
+            $j <= 4;
+            $j++) {
                 $card = $cards[$j + $i];
                 if ($expect == $card) {
                     $expect = $expect -1;
@@ -120,11 +124,31 @@ class poker extends aiv2 {
      * playerName
      * ---
      * Returns the players name if it was set using the name command, otherwise returns Player X
-     */
-    function playerName($player)
-    {
-        if ($player->name) { return ucfirst($player->name); }
-        else { return sprintf("Player %d", $player->id); }
+    */
+    function playerName($player) {
+        if (!is_object($player)) {
+            return false;
+        }
+        if ($player->name) {
+            return ucfirst($player->name);
+        }
+        else {
+            return sprintf("Player %d", $player->id);
+        }
+    }
+
+    /*
+     * cardName
+     * ---
+     * Returns the name of the card based on the number (reversed calculation)
+    */
+    function cardName($card) {
+        $card = intval($card);
+
+        $return = array(1 => 'Ace', 14 => 'Ace', 2 => 'Two', 3 => 'Three', 4 => 'Four',
+                5 => 'Five', 6 => 'Six', 7 => 'Seven', 8 => 'Eight', 9 => 'Nine',
+                10 => 'Ten', 11 => 'Jack', 12 => 'Queen', 13 => 'King');
+        return $return[$card];
     }
 
     /*
@@ -132,12 +156,11 @@ class poker extends aiv2 {
         * into the function!
     */
 
-    function calcPoker(array $cards) {
+    function calcPoker(array $cards, $player) {
         $myCards = array();
         $myColors = array('spades' => 0, 'diamonds' => 0, 'hearts' => 0, 'clubs' => 0);
         $sortCards = array('spades' => array(), 'diamonds' => array(), 'hearts' => array(), 'clubs' => array());
         $score = 0;
-
         // The points one could gain for such an interesting event :-)
         $straight_flush = 180;
         $four_of_a_kind = 140;
@@ -212,7 +235,7 @@ class poker extends aiv2 {
                     // Straight flush!
                     $added = array_sum($check) /100;
                     $score += $straight_flush + $added;
-                    echo "Got a straight flush! score ({$score})\n";
+                    $this->broadcast(sprintf("%s got a straight flush! score: %3.0f\n", $this->playerName($player), $score));
                     # Highest possible score, we can return here!
                     return $score;
                 }
@@ -231,7 +254,7 @@ class poker extends aiv2 {
                     break;
                 }
             }
-            echo "Four of a kind: {$score}\n";
+            $this->broadcast(sprintf("%s got four of a kind! score: %3.0f\n", $this->playerName($player), $score));
             return $score;
         }
 
@@ -276,13 +299,13 @@ class poker extends aiv2 {
                 }
             }
             $score += $fullhouse + ( ((3*$scorethree) + (2*$scorepair)) /100 );
-            echo "Got a full house {$scorethree} and {$scorepair} ({$score})\n";
+            $this->broadcast(sprintf("%s got a full house %ss and %ss score %3.0f", $this->playerName($player), $this->cardname($scorethree), $this->cardname($scorepair), $score));
             return $score;
         }
 
         # We have a flush, at this moment this is the highest we can attain
         if (isSet($flushscore) && !empty($flushscore)) {
-            echo "Flush with score: {$flushscore}\n";
+            $this->broadcast(sprintf("%s got a flush with score %3.0f", $this->playerName($player), $flushscore));
             return $flushscore;
         }
 
@@ -315,7 +338,7 @@ class poker extends aiv2 {
             $score = $three_pair;
             $add = (($threes * 3)  + ($highcard[0] + $highcard[1])) /100;
             $score += $add;
-            echo "Got three of a kind with score {$score}\n";
+            $this->broadcast(sprintf("%s got a three of a kind %s with score: %3.0f", $this->playerName($player), $this->cardName($threes), $score));
             return $score;
         }
 
@@ -339,7 +362,12 @@ class poker extends aiv2 {
             $score = $two_pair;
             $add = ((array_sum($pairs) *20) + $highcard) /100;
             $score += $add;
-            echo "Got two pair with score {$score}\n";
+            $bcMsg = array();
+            foreach ($pairs as $value) {
+                $bcMsg[] = $this->cardName($value) . "s";
+            }
+            $bcMsg = implode(" and ", $bcMsg);
+            $this->broadcast(sprintf("%s got two pair %s with score %3.0f", $this->playerName($player), $bcMsg, $score));
             return $score;
         }
 
@@ -360,14 +388,14 @@ class poker extends aiv2 {
             $score = $one_pair;
             $add = (array_sum($highcards) + ($pair *20)) / 100;
             $score += $add;
-            echo "Got a pair with score: {$score}\n";
+            $this->broadcast(sprintf("%s got a pair of %ss with score: %3.0f", $this->playerName($player),$this->cardName($pair),$score));
             return $score;
         }
 
         # High card
         $score = $high_card;
         $score += $myCards[0] /100;
-        echo "Got a high card with score: {$score}\n";
+        $this->broadcast(sprintf("%s got high card %s with total score: %3.0f", $this->playerName($player), $this->cardName($high_card), $score));
         return $score;
     }
 
@@ -470,7 +498,7 @@ class poker extends aiv2 {
             }
             return;
         }
-        # We still have multiple players in the game
+# We still have multiple players in the game
         $this->nextTurn();
 
     }
@@ -497,9 +525,9 @@ class poker extends aiv2 {
                     if ($this->bet) {
                         $bet = $this->getbet();
                         if ($player->money <= $bet) {
-                            // Have to fix this function here, because I don't know
-                            // what happens when the player can't afford the call
-                            // suppose he/she has to go all-in
+// Have to fix this function here, because I don't know
+// what happens when the player can't afford the call
+// suppose he/she has to go all-in
 
                         }
                         else {
@@ -592,7 +620,6 @@ class poker extends aiv2 {
 
             case 'check':
                 if ($this->turn == $player->id) {
-
                     # We cannot check if somebody placed a bet in this turn :(
                     if ($this->bet) {
                         $this->send($player, "You can not check, because another player bet in this turn!");
@@ -628,8 +655,8 @@ class poker extends aiv2 {
                 break;
 
             default:
-            # Module doesn't know the command, fall back to the original commands
-            # as specified in the aiv2 module, don't you just love parent functions :-)
+                # Module doesn't know the command, fall back to the original commands
+                # as specified in the aiv2 module, don't you just love parent functions :-)
                 parent :: handleCommand($player, $orig, $args);
                 break;
         }
@@ -658,7 +685,7 @@ class poker extends aiv2 {
      * Gets the next player that is still in the game
     */
     public function getNextPlayer($id) {
-        // Whenever no blind is set e.g. new game
+// Whenever no blind is set e.g. new game
         if ($id == 0) {
             if (!$this->playerblinds[0]) {
                 return $this->players[1];
@@ -668,20 +695,24 @@ class poker extends aiv2 {
             }
         }
         $before = $id -1;
-        // Get the players after
-        for ($i = $id; $i <= $this->connections; $i++) {
+// Get the players after
+        for ($i = $id;
+        $i <= $this->connections;
+        $i++) {
             $player = $this->players[$i];
-            # if the player is in the game and NOT this player
+# if the player is in the game and NOT this player
             if (!$player->out && $player->id != $id) {
                 return $player;
                 break;
             }
         }
-        // Get the players before
+// Get the players before
         if ($before > 0) {
-            for ($i = 1; $i < $id; $i++) {
+            for ($i = 1;
+            $i < $id;
+            $i++) {
                 $player = $this->players[$i];
-                # if the player is in the game and NOT this player
+# if the player is in the game and NOT this player
                 if (!$player->out && $player->id != $id) {
                     return $player;
                     break;
@@ -693,7 +724,7 @@ class poker extends aiv2 {
     }
 
     public function resetgame() {
-        // Resets a game, removing bets and pots
+// Resets a game, removing bets and pots
         $this->fold = 0;
         $this->pot = 0;
         $this->moves = 0;
@@ -702,7 +733,7 @@ class poker extends aiv2 {
         $this->betamount = null;
         $this->playersingame = $this->connections;
         $this->turntimer = 0;
-        # Remove any previous folds
+# Remove any previous folds
         foreach ($this->players as $i => $pl) {
             $pl->fold = false;
             $pl->cards = array();
@@ -750,7 +781,7 @@ class poker extends aiv2 {
                 $i++;
             }
             else {
-                # remove the player from the game
+# remove the player from the game
                 $this->out++;
                 $player->out = true;
                 if ($this->out == $this->playersingame -1) {
@@ -787,11 +818,15 @@ class poker extends aiv2 {
 
         switch ($this->moves) {
             case 1:
-            // Deal the cards to the players
+// Deal the cards to the players
                 $this->gamecards = $this->deck;
                 shuffle($this->gamecards);
-                for ($i = 1; $i <= 2; $i++) {
-                    for ($j = 1; $j <= $this->playersingame; $j++) {
+                for ($i = 1;
+                $i <= 2;
+                $i++) {
+                    for ($j = 1;
+                    $j <= $this->playersingame;
+                    $j++) {
                         $player = $this->players[$j];
                         $player->cards[] = $this->gamecards[0];
                         array_shift($this->gamecards);
@@ -800,8 +835,10 @@ class poker extends aiv2 {
                 break;
 
             case 2:
-            // Deals the flop cards
-                for ($i = 0; $i <= 3; $i++) {
+// Deals the flop cards
+                for ($i = 0;
+                $i <= 3;
+                $i++) {
                     switch ($i) {
                         case 0:
                             array_shift($this->gamecards);
@@ -826,12 +863,11 @@ class poker extends aiv2 {
                 $scores = array();
                 foreach ($this->players as $pl) {
                     $playercards = array_merge($pl->cards, $this->gamecardstable);
-                    $score = $this->calcPoker($playercards);
+                    $score = $this->calcPoker($playercards, $pl);
                     $scores[$pl->id] = $score;
-                    $this->broadcast(sprintf("%s has a score of %0.2f", $this->playerName($player), $score));
                 }
                 return;
-                
+
                 break;
 
         }
@@ -843,22 +879,22 @@ class poker extends aiv2 {
      * Select the next player that is in the game and sends the turn to him/her
     */
     public function nextTurn() {
-        # Is the turn over?
+# Is the turn over?
 
         if (array_sum($this->playercalls) == $this->playersingame) {
             $this->progress();
 
-            //$player = $this->getNextPlayer($player->id);
+//$player = $this->getNextPlayer($player->id);
             $pl = $this->starter ;
             $pl = $this->players[$pl];
-            //print_r($this->players);
+//print_r($this->players);
             print_r($pl);
             return;
         }
         $player = $this->getNextPlayer($this->turn);
         $this->turn = $player->id;
         $this->turntimer = 0;
-        # Tell the players that the turn belongs to $player->id
+# Tell the players that the turn belongs to $player->id
         $this->broadcast(sprintf("T=%d", $player->id));
         $this->send($player, "It is your turn.. you have 20 seconds to make a move!");
     }
@@ -875,7 +911,7 @@ class pokerplayer extends player {
     public $out = false;
     public $cards = array();
     public $raiseturn = false;
-    // Statistical information is stored per player
+// Statistical information is stored per player
     public $bets;
     public $folds;
     public $calls;
