@@ -171,7 +171,6 @@ class poker extends aiv2 {
         $two_pair = 20;
         $one_pair = 10;
         $high_card = 0;
-
         # Analyse data given as input
         foreach ($cards as $card) {
             $card = explode(" ", $card);
@@ -655,8 +654,8 @@ class poker extends aiv2 {
                 break;
 
             default:
-                # Module doesn't know the command, fall back to the original commands
-                # as specified in the aiv2 module, don't you just love parent functions :-)
+            # Module doesn't know the command, fall back to the original commands
+            # as specified in the aiv2 module, don't you just love parent functions :-)
                 parent :: handleCommand($player, $orig, $args);
                 break;
         }
@@ -685,7 +684,7 @@ class poker extends aiv2 {
      * Gets the next player that is still in the game
     */
     public function getNextPlayer($id) {
-// Whenever no blind is set e.g. new game
+        // Whenever no blind is set e.g. new game
         if ($id == 0) {
             if (!$this->playerblinds[0]) {
                 return $this->players[1];
@@ -695,24 +694,20 @@ class poker extends aiv2 {
             }
         }
         $before = $id -1;
-// Get the players after
-        for ($i = $id;
-        $i <= $this->connections;
-        $i++) {
+        // Get the players after
+        for ($i = $id; $i <= $this->connections; $i++) {
             $player = $this->players[$i];
-# if the player is in the game and NOT this player
+            # if the player is in the game and NOT this player
             if (!$player->out && $player->id != $id) {
                 return $player;
                 break;
             }
         }
-// Get the players before
+        // Get the players before
         if ($before > 0) {
-            for ($i = 1;
-            $i < $id;
-            $i++) {
+            for ($i = 1;$i < $id; $i++) {
                 $player = $this->players[$i];
-# if the player is in the game and NOT this player
+                # if the player is in the game and NOT this player
                 if (!$player->out && $player->id != $id) {
                     return $player;
                     break;
@@ -724,7 +719,7 @@ class poker extends aiv2 {
     }
 
     public function resetgame() {
-// Resets a game, removing bets and pots
+        // Resets a game, removing bets and pots
         $this->fold = 0;
         $this->pot = 0;
         $this->moves = 0;
@@ -733,7 +728,7 @@ class poker extends aiv2 {
         $this->betamount = null;
         $this->playersingame = $this->connections;
         $this->turntimer = 0;
-# Remove any previous folds
+        # Remove any previous folds
         foreach ($this->players as $i => $pl) {
             $pl->fold = false;
             $pl->cards = array();
@@ -781,7 +776,7 @@ class poker extends aiv2 {
                 $i++;
             }
             else {
-# remove the player from the game
+                # remove the player from the game
                 $this->out++;
                 $player->out = true;
                 if ($this->out == $this->playersingame -1) {
@@ -818,15 +813,11 @@ class poker extends aiv2 {
 
         switch ($this->moves) {
             case 1:
-// Deal the cards to the players
+            // Deal the cards to the players
                 $this->gamecards = $this->deck;
                 shuffle($this->gamecards);
-                for ($i = 1;
-                $i <= 2;
-                $i++) {
-                    for ($j = 1;
-                    $j <= $this->playersingame;
-                    $j++) {
+                for ($i = 1;$i <= 2; $i++) {
+                    for ($j = 1; $j <= $this->playersingame; $j++) {
                         $player = $this->players[$j];
                         $player->cards[] = $this->gamecards[0];
                         array_shift($this->gamecards);
@@ -835,7 +826,7 @@ class poker extends aiv2 {
                 break;
 
             case 2:
-// Deals the flop cards
+            // Deals the flop cards
                 for ($i = 0;
                 $i <= 3;
                 $i++) {
@@ -879,22 +870,20 @@ class poker extends aiv2 {
      * Select the next player that is in the game and sends the turn to him/her
     */
     public function nextTurn() {
-# Is the turn over?
-
+        # Is the turn over?
         if (array_sum($this->playercalls) == $this->playersingame) {
             $this->progress();
-
-//$player = $this->getNextPlayer($player->id);
+            //$player = $this->getNextPlayer($player->id);
             $pl = $this->starter ;
             $pl = $this->players[$pl];
-//print_r($this->players);
-            print_r($pl);
+            //print_r($this->players);
+            //print_r($pl);
             return;
         }
         $player = $this->getNextPlayer($this->turn);
         $this->turn = $player->id;
         $this->turntimer = 0;
-# Tell the players that the turn belongs to $player->id
+        # Tell the players that the turn belongs to $player->id
         $this->broadcast(sprintf("T=%d", $player->id));
         $this->send($player, "It is your turn.. you have 20 seconds to make a move!");
     }
@@ -911,7 +900,7 @@ class pokerplayer extends player {
     public $out = false;
     public $cards = array();
     public $raiseturn = false;
-// Statistical information is stored per player
+    // Statistical information is stored per player
     public $bets;
     public $folds;
     public $calls;
