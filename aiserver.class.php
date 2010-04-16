@@ -16,6 +16,9 @@ class aiv2 {
     public $names = array();
     private $socket;
     public $check;
+    private $adminpassword;
+
+
 
     /*
      * Constructor
@@ -31,6 +34,7 @@ class aiv2 {
             die("Could not create a TCP/IP socket... is the socket-extension loaded in PHP.ini?\n");
         }
         printf("Socket created succesfully, waiting for clients...\n");
+        $this->adminpassword = 'secret'; // Please do change this :)
     }
 
     /*
@@ -171,12 +175,31 @@ class aiv2 {
                 socket_close($player->socket);
                 $player->socket = null;
             }
+            $this->connections--;
+            $this->broadcast(sprintf("%s has left the game", $this->playerName($player)));
             unset($this->players[$player->id]);
             unset($player);
-            $this->connections--;
-            $this->broadcast(sprintf("Player %d has left the game", $id));
+
         }
     }
+
+    /*
+     * playerName
+     * ---
+     * Returns the players name if it was set using the name command, otherwise returns Player X
+    */
+    function playerName($player) {
+        if (!is_object($player)) {
+            return false;
+        }
+        if ($player->name) {
+            return ucfirst($player->name);
+        }
+        else {
+            return sprintf("Player %d", $player->id);
+        }
+    }
+
 
     /*
      * HandleCommand
@@ -186,6 +209,30 @@ class aiv2 {
     public function handleCommand($player, $command, $args) {
         $command = strtolower($command[0]);
         switch ($command) {
+            case 'login':
+                $login = implode(" ", $args);
+                if ($login == $this->adminpassword) {
+                    $player->admin = true;
+                    $this->send($player, "Good evening professor Falken, shall we play a game?");
+                    $this->send($player, "You are now logged in as an Adminstrator");
+                }
+                else {
+                    $this->send($player, "Password incorrect!");
+                }
+                break;
+
+            case 'list':
+                if ($player->admin == false) {
+                    $this->send($player, "List: you are not an Administrator");
+                    return;
+                }
+                $this->send($player, "Players connected:");
+                foreach ($this->players as $pl) {
+                    socket_getpeername($pl->socket, $ip);
+                    $this->send($player, sprintf('#%d. "%s" <%s> %s', $pl->id, $this->playerName($pl), $ip, $pl->id == $player->id ? '(You)' : ''));
+                }
+                break;
+
             case 'quit':
             case 'exit':
                 $this->disconnect($player);
@@ -202,7 +249,6 @@ class aiv2 {
                     }
                     if (!empty($player->name)) {
                         # Unset the old name so other clients can use it once more
-                        print_r($this->names);
                         for ($i= 0; $i < count($this->names); $i++) {
                             if ($player->name == $this->names[$i]) {
                                 unset($this->names[$i]);
@@ -244,6 +290,7 @@ class aiv2 {
 class player {
     public $id;
     public $name;
+    public $admin = false;
     public $socket = null;
     public $buffer = null;
 }
