@@ -200,10 +200,11 @@ class aiv2 {
                         $this->send($player, sprintf("%s: that name is already in use", $name));
                         return false;
                     }
-                    if ($player->name) {
+                    if (!empty($player->name)) {
                         # Unset the old name so other clients can use it once more
-                        for ($i= 0; $i < $this->names; $i++) {
-                            if ($player->names == $this->names[$i]) {
+                        print_r($this->names);
+                        for ($i= 0; $i < count($this->names); $i++) {
+                            if ($player->name == $this->names[$i]) {
                                 unset($this->names[$i]);
                             }
                         }
@@ -212,6 +213,7 @@ class aiv2 {
                     $player->name = $name;
                     $this->broadcast(sprintf("%s is now known as %s", $now, $name));
                     $this->names[] = $name;
+                    $this->names = array_values($this->names);
                 }
                 break;
             # If the command is unknown, we will send a chatmessage
