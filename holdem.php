@@ -33,7 +33,7 @@ class poker extends aiv2 {
         parent :: __construct();
         printf ("Loaded the Texas Hold `em Module succesfully!\n");
 
-# Generate the deck only has to be done once
+        # Generate the deck only has to be done once
         $types = array('spades', 'clubs', 'hearts', 'diamonds');
         $cards = array(2,3,4,5,6,7,8,9,10,'Jack', 'Queen', 'King', 'Ace');
         $deck = array();
@@ -46,17 +46,17 @@ class poker extends aiv2 {
         $this->deck = $deck;
     }
 
-// Heartbeat
-// Checks if a player takes too long about his turn or whenever we can start the
-// game
+    // Heartbeat
+    // Checks if a player takes too long about his turn or whenever we can start the
+    // game
     public function heartbeat() {
-// This is where the game logic is done, whenever the game is full
-// Start a new game
+        // This is where the game logic is done, whenever the game is full
+        // Start a new game
         if ( ($this->spots == $this->connections) && $this->game == 0) {
             $this->startgame();
         }
 
-// Time the player's turns
+        // Time the player's turns
         if ($this->turn) {
             $this->turntimer++;
             if ($this->turntimer == 5) {
@@ -70,7 +70,7 @@ class poker extends aiv2 {
             }
         }
 
-// New game ?
+        // New game ?
         if ($this->newgame == true) {
             $this->startgame();
             $this->newgame = false;
@@ -827,9 +827,7 @@ class poker extends aiv2 {
 
             case 2:
             // Deals the flop cards
-                for ($i = 0;
-                $i <= 3;
-                $i++) {
+                for ($i = 0;$i <= 3;$i++) {
                     switch ($i) {
                         case 0:
                             array_shift($this->gamecards);
@@ -872,12 +870,16 @@ class poker extends aiv2 {
     public function nextTurn() {
         # Is the turn over?
         if (array_sum($this->playercalls) == $this->playersingame) {
-            $this->progress();
             //$player = $this->getNextPlayer($player->id);
             $pl = $this->starter ;
             $pl = $this->players[$pl];
-            //print_r($this->players);
-            //print_r($pl);
+            if (!$pl->fold && !$pl->out) {
+                $this->turn = $pl->id;
+            }
+            else {
+                $this->turn = $this->getNextPlayer($pl->id);
+            }
+            $this->progress();
             return;
         }
         $player = $this->getNextPlayer($this->turn);
@@ -901,6 +903,7 @@ class pokerplayer extends player {
     public $cards = array();
     public $raiseturn = false;
     // Statistical information is stored per player
+    public $wins;
     public $bets;
     public $folds;
     public $calls;

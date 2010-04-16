@@ -13,6 +13,7 @@ class aiv2 {
     public $port = 8000;
     public $bindip = '127.0.0.1';
     public $maxconnections = null;
+    public $names = array();
     private $socket;
     public $check;
 
@@ -190,14 +191,27 @@ class aiv2 {
                 $this->disconnect($player);
                 break;
             case 'name':
-                $name = trim(implode(" ", $args));
+                $name = ucfirst(strtolower(trim(implode(" ", $args))));
                 if (!$name || empty($name)) {
                     $this->send($player, "Name: not enough parameters");
                 }
                 else {
+                    if (in_array($name, $this->names)) {
+                        $this->send($player, sprintf("%s: that name is already in use", $name));
+                        return false;
+                    }
+                    if ($player->name) {
+                        # Unset the old name so other clients can use it once more
+                        for ($i= 0; $i < $this->names; $i++) {
+                            if ($player->names == $this->names[$i]) {
+                                unset($this->names[$i]);
+                            }
+                        }
+                    }
                     $now = !empty($player->name) ? trim($player->name)  : "Player " . $player->id;
                     $player->name = $name;
                     $this->broadcast(sprintf("%s is now known as %s", $now, $name));
+                    $this->names[] = $name;
                 }
                 break;
             # If the command is unknown, we will send a chatmessage
