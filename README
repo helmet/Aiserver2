@@ -11,7 +11,7 @@ and is intended to provide future students with a platform on which their
 programs can compete against eachother.
 
 FAQ:
-1.  Which PHPVersion is required to run this application?
+1.  Which PHP-version is required to run this application?
     This application makes extensive use of the OOP-implementation
     which was introduced in PHP5. The application was tested with PHP5.3
 
@@ -21,5 +21,15 @@ FAQ:
     ;extension=php_sockets.dll -> extension=php_sockets.dll
 
     for *nix/apple users the extension is called php_sockets.so
+
+3.  Wouldn't it have been a better idea to write this application in a "real"
+    programming language like C, C++ or even C#?
+
+    I am well aware that there is several programming language that allow the
+    creation of a more stable or efficient program, however this package is
+    intended for a university-course not specifically aimed at programming.
+
+    The ease of use PHP offers (with regards to other programming languages)
+    makes it ideal to serve as a basis for custom written tools by other students.
 
 --EOF--
