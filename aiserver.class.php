@@ -176,9 +176,11 @@ class aiv2 {
             $this->connections--;
             $this->broadcast(sprintf("%s has left the game", $this->playerName($player)));
             $n = $this->playerName($player);
-            foreach ($this->names as $k => $name)
-            {
-                if ($name == $n) { unset($this->names[$k]); $this->names = array_values($this->names); }
+            foreach ($this->names as $k => $name) {
+                if ($name == $n) {
+                    unset($this->names[$k]);
+                    $this->names = array_values($this->names);
+                }
             }
 
             unset($this->players[$player->id]);
@@ -216,6 +218,7 @@ class aiv2 {
             case 'login':
                 if ($player->admin) {
                     $this->send($player, "You already are an Administrator");
+                    return;
                 }
                 $login = implode(" ", $args);
                 if ($login == $this->adminpassword) {
@@ -259,6 +262,10 @@ class aiv2 {
                         $p = $this->players[$i];
                         $cname = $this->playerName($p);
                         if ($cname == $ktarget) {
+                            if ($p->id == $player->id) {
+                                $this->send($player, "You can not kick yourself from the server");
+                                return;
+                            }
                             $this->broadcast(sprintf("%s was kicked from the server", $this->playerName($p)), $p);
                             $this->send($p, "You were removed from the server by an Administrator");
                             $this->disconnect($p);
@@ -266,15 +273,19 @@ class aiv2 {
                     }
                     return;
                 }
-                else {
-                    if (isSet($this->players[$knumber])) {
-                        $p = $this->players[$knumber];
-                        $this->broadcast(sprintf("%s was kicked from the server", $this->playerName($p)), $p);
-                        $this->send($p, "You were removed from the server by an Administrator");
-                        $this->disconnect($p);
+                // If the playerid exists and is online
+                if (isSet($this->players[$knumber])) {
+                    if ($knumber == $player->id) {
+                        $this->send($player, "You can not kick yourself from the server");
+                        return;
                     }
+                    $p = $this->players[$knumber];
+                    $this->broadcast(sprintf("%s was kicked from the server", $this->playerName($p)), $p);
+                    $this->send($p, "You were removed from the server by an Administrator");
+                    $this->disconnect($p);
                     return;
                 }
+                // Player not found, return an error message
                 $this->send($player, "Kick: No such player or id");
                 break;
 
