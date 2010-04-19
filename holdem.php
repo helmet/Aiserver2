@@ -406,7 +406,9 @@ class poker extends aiv2 {
 
     public function addplayer($playerid) {
         $player = new pokerplayer();
-        $player->name = null;
+        $name = sprintf('Player %d', $playerid);
+        $player->name = $name;
+        $this->names[] = $name;
         $player->id = $playerid;
         $player->money = $this->playermoney;
         $this->players[$playerid] = $player;

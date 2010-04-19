@@ -7,7 +7,7 @@
 */
 
 class aiv2 {
-    static $version = 2.05;
+    static $version = 2.10;
     public $connections;
     public $players = array();
     public $port = 8000;
@@ -17,8 +17,6 @@ class aiv2 {
     private $socket;
     public $check;
     private $adminpassword;
-
-
 
     /*
      * Constructor
@@ -177,6 +175,12 @@ class aiv2 {
             }
             $this->connections--;
             $this->broadcast(sprintf("%s has left the game", $this->playerName($player)));
+            $n = $this->playerName($player);
+            foreach ($this->names as $k => $name)
+            {
+                if ($name == $n) { unset($this->names[$k]); $this->names = array_values($this->names); }
+            }
+
             unset($this->players[$player->id]);
             unset($player);
 
@@ -210,11 +214,14 @@ class aiv2 {
         $command = strtolower($command[0]);
         switch ($command) {
             case 'login':
+                if ($player->admin) {
+                    $this->send($player, "You already are an Administrator");
+                }
                 $login = implode(" ", $args);
                 if ($login == $this->adminpassword) {
                     $player->admin = true;
                     $this->send($player, "Good evening professor Falken, shall we play a game?");
-                    $this->send($player, "You are now logged in as an Adminstrator");
+                    $this->send($player, "You are now logged in as an Administrator");
                 }
                 else {
                     $this->send($player, "Password incorrect!");
@@ -231,6 +238,44 @@ class aiv2 {
                     socket_getpeername($pl->socket, $ip);
                     $this->send($player, sprintf('#%d. "%s" <%s> %s', $pl->id, $this->playerName($pl), $ip, $pl->id == $player->id ? '(You)' : ''));
                 }
+                break;
+
+            case 'kick':
+                if ($player->admin == false) {
+                    $this->send($player, "Kick: you are not an Administrator");
+                    return;
+                }
+                if (!isSet($args[0])) {
+                    $this->send($player, 'Kick: not enough parameters');
+                    return;
+                }
+
+                // First check if the name exists in the player base
+                $ktarget = ucfirst(strtolower(trim(implode(" ", $args))));
+                $knumber = intval($ktarget);
+
+                if (in_array($ktarget, $this->names)) {
+                    for ($i = 1; $i <= count($this->players); $i++) {
+                        $p = $this->players[$i];
+                        $cname = $this->playerName($p);
+                        if ($cname == $ktarget) {
+                            $this->broadcast(sprintf("%s was kicked from the server", $this->playerName($p)), $p);
+                            $this->send($p, "You were removed from the server by an Administrator");
+                            $this->disconnect($p);
+                        }
+                    }
+                    return;
+                }
+                else {
+                    if (isSet($this->players[$knumber])) {
+                        $p = $this->players[$knumber];
+                        $this->broadcast(sprintf("%s was kicked from the server", $this->playerName($p)), $p);
+                        $this->send($p, "You were removed from the server by an Administrator");
+                        $this->disconnect($p);
+                    }
+                    return;
+                }
+                $this->send($player, "Kick: No such player or id");
                 break;
 
             case 'quit':
@@ -266,18 +311,20 @@ class aiv2 {
             # This might come in handy when debugging certain parameters!
             default:
                 $message = ucfirst($command) . ' ' . trim(implode(" ", $args));
-                $name = !empty($player->name) ? trim($player->name)  : "Player " . $player->id;
-                $this->broadcast(sprintf("<%s> %s", $name, $message));
+                $this->broadcast(sprintf("<%s> %s",  $this->playerName($player), $message));
                 break;
         }
     }
+
 
     /*
      * Adds a default player to the game
     */
     public function addplayer($playerid) {
         $player = new player();
-        $player->name = null;
+        $name = sprintf('Player %d', $playerid);
+        $player->name = $name;
+        $this->names[] = $name;
         $player->id = $playerid;
         $this->players[$playerid] = $player;
         return $player;
