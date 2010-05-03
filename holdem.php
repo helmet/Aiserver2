@@ -90,17 +90,13 @@ class poker extends aiv2 {
             return false;
         }
         # Make sure our array doesn't go out of bounds
-        for ($i = 0;
-        $i < $possible;
-        $i++) {
+        for ($i = 0; $i < $possible; $i++) {
             $start = $cards[$i];
             $straightcards = array();
             $straightcards[] = $start;
             $expect = $cards[$i] -1;
             // We need four cards to match below the card we have
-            for ($j = 1;
-            $j <= 4;
-            $j++) {
+            for ($j = 1; $j <= 4; $j++) {
                 $card = $cards[$j + $i];
                 if ($expect == $card) {
                     $expect = $expect -1;
@@ -439,6 +435,41 @@ class poker extends aiv2 {
         $this->send($player, sprintf("RS=%d,%0.2f,%0.2f,%0.2f,%d", $this->spots, $this->playermoney, $this->bigblind, $this->smallblind, $this->totalgames));
     }
 
+
+    /*
+     * addMoney
+    */
+    public function addMoney($amount, $player, $type = 'call') {
+        if ($player->money < $amount) {
+            /*
+             * Player has to go all-in
+            */
+            switch ($type) {
+                case 'call':
+                    $this->broadcast("%s can't afford to call this bet and goes ALL-in with the dazzling amount of %0.2f", $this->playerName($player), $player->money);
+                    $tmp = $player->money;
+                    $player->money = 0;
+
+                    #$this->pots[] = array($this->pot + ($this->[pl]));
+                    break;
+            }
+        }
+    }
+
+    /*
+     * PlayersLeft
+     * returns the amount of players still playing in the current hand
+    */
+    public function playersLeft() {
+        $i = 0;
+        foreach($this->players as $pl) {
+            if (!$pl->out && !$pl->fold) {
+                $i++;
+            }
+        }
+        return $i;
+    }
+
     /*
      * Winner
      * assigns the pot to the winner and starts a new game
@@ -482,9 +513,8 @@ class poker extends aiv2 {
             }
             return;
         }
-# We still have multiple players in the game
+        # We still have multiple players in the game
         $this->nextTurn();
-
     }
 
     /*
