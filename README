@@ -22,7 +22,12 @@ FAQ:
 
     for *nix/apple users the extension is called php_sockets.so
 
-3.  Wouldn't it have been a better idea to write this application in a "real"
+3.  How do I actually start the application.
+    Ideally, the software needs to be started from console by using the command-line
+    version of PHP (PHP.exe in Windows), the software will actually run from the browser
+    but no information will be displayed or flushed to the screen.
+
+4.  Wouldn't it have been a better idea to write this application in a "real"
     programming language like C, C++ or even C#?
 
     I am well aware that there is several programming language that allow the
