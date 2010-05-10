@@ -751,6 +751,10 @@ class poker extends aiv2 {
         $this->resetplayercalls();
     }
 
+    /*
+     * resetplayercalls
+     * Resets all calls / bets from each player
+     */
     public function resetplayercalls() {
         foreach ($this->players as $i => $pl) {
             if ($pl->fold || $pl->out) {

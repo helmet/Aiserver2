@@ -91,7 +91,7 @@ class aiv2 {
                         continue;
                     }
                     $player->buffer .= $data;
-                    if ($data == "\n" || $data == "\r\n") {
+                    if ($data == "\n" || $data == "\r\n" || stristr($player->buffer, "\n") ) {
                         $command = explode(' ', trim($player->buffer));
                         $args = array_slice($command,1 );
                         # The client actually sent a command, try to handle it!
