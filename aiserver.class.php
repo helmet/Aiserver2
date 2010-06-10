@@ -85,7 +85,7 @@ class aiv2 {
             // Handle data and commands sent by the clients
             foreach ($this->players as $id => $player) {
                 if (isSet($player->socket) && in_array($player->socket, $read)) {
-                    $data = socket_read($player->socket, 1096);
+                    @$data = socket_read($player->socket, 1096);
                     if ($data == null) {
                         $this->disconnect($player);
                         continue;
