@@ -7,7 +7,7 @@
 */
 
 class aiv2 {
-    static $version = 2.10;
+    static $version = 2.25;
     public $connections;
     public $players = array();
     public $port = 8000;
@@ -236,6 +236,7 @@ class aiv2 {
                     $this->send($player, "List: you are not an Administrator");
                     return;
                 }
+                ksort($this->players);
                 $this->send($player, "Players connected:");
                 foreach ($this->players as $pl) {
                     socket_getpeername($pl->socket, $ip);
@@ -322,7 +323,9 @@ class aiv2 {
             # This might come in handy when debugging certain parameters!
             default:
                 $message = ucfirst($command) . ' ' . trim(implode(" ", $args));
-                $this->broadcast(sprintf("<%s> %s",  $this->playerName($player), $message));
+                if ($message != " ") { // Prevent empty messages
+                    $this->broadcast(sprintf("<%s> %s",  $this->playerName($player), $message));
+                }
                 break;
         }
     }
