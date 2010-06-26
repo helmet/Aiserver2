@@ -46,6 +46,7 @@ class aiclient {
                          * program logic, at this moment it will randomly choose
                          * an action for good or for worse... you have been warned :)
                          */
+                        $this->send("check");
                     }
                     break;
             }
@@ -62,8 +63,8 @@ class aiclient {
             die(sprintf("Couldn't connect to %s:%d", $server, intval($port)));
         }
         else {
-            self :: send(sprintf("Name %s", $this->name));
-            self :: send("This is the AIClient example written in PHP");
+            //self :: send(sprintf("Name %s", $this->name));
+            //self :: send("This is the AIClient example written in PHP");
             while (!feof($fp)) {
                 self :: receive(fgets($fp, 4096));
             }
