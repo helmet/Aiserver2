@@ -5,11 +5,20 @@ class aiclient {
     public $id;
     public $windows;
 
+    # Game specific
+    public $stage; // Stage of the game
+    public $bet;
+    public $selfraise = false;
+
+
+
     // Constructor, sets up some defaults
     public function __construct() {
-        $this->name = "AIdemo"; // Default nickname        
+        $this->name = "AIdemo"; // Default nickname
         $this->windows = true; // Assume we are using windows
-        if (!function_exists('fsockopen')) { die("I am sorry, but the PHP-sockets module should be loaded in PHP.ini"); }
+        if (!function_exists('fsockopen')) {
+            die("I am sorry, but the PHP-sockets module should be loaded in PHP.ini");
+        }
     }
 
     public function send($data) {
@@ -26,11 +35,27 @@ class aiclient {
         // Commands structures are defined as COMMAND=VALUE
         foreach ($data as $line) {
             $cmd = explode("=", $line);
+
+
             // Handle commands sent by the server
             switch ($cmd[0]) {
+                case 'M':
+                // New stage of the game (1=preflop, 2=flop, 3=turn, 4=river, 5=afterflop)
+                    $this->stage = $cmd[1];
+                    $this->bet = false;
+                    $this->selfraise= false;
+                    break;
+                case 'NG':
+                // New game was started, reset information stored in the client
+                    $this->bet = false;
+                    $this->selfraise= false;
+                    break;
 
                 case 'P':
-                    // Is sent whenever another player makes a move
+                    $cmd = trim($cmd[1]);
+                    if ($cmd == 'BET') {
+                        $this->bet = true;
+                    }
                     break;
                 case 'ID':
                     $this->id = $cmd[1];
@@ -39,14 +64,34 @@ class aiclient {
 
                 case 'T':
                     $tid = $cmd[1];
-                    if ($cmd[1] == $this->id)
-                    {
+                    if ($cmd[1] == $this->id) {
                         /*
                          * This space is reserved for your
                          * program logic, at this moment it will randomly choose
                          * an action for good or for worse... you have been warned :)
-                         */
-                        $this->send("check");
+                        */
+                        if (!$this->bet) {
+                            $move = rand(1, 10);
+                            if ($move != 10) {
+                                $this->send("check");
+                            }
+                            else {
+                                $this->send('bet');
+                            }
+                        }
+
+                        else {
+                            $move = rand(1, 10);
+                            if ($move <= 6 || $this->selfraise == true) {
+                                $this->send('call');
+                            }
+                            else
+                            {
+                                $this->send('call');
+                                //$this->Send('raise');
+                                //$this->selfraise = true;
+                            }
+                        }
                     }
                     break;
             }
@@ -57,7 +102,8 @@ class aiclient {
      * Connects to the server and
     */
     public function connect($server, $port) {
-        $fp = $this->conn = fsockopen($server, $port);
+        printf("AIClient is trying to connect to the server at %s:%d\n", $server, intval($port));
+        $fp = $this->conn = @fsockopen($server, $port);
         // Can't connect to the server
         if (!$fp) {
             die(sprintf("Couldn't connect to %s:%d", $server, intval($port)));
