@@ -9,7 +9,7 @@ class aiclient {
     public $stage; // Stage of the game
     public $bet;
     public $selfraise = false;
-
+    public $suddendeath;
 
 
     // Constructor, sets up some defaults
@@ -44,6 +44,7 @@ class aiclient {
                     $this->stage = $cmd[1];
                     $this->bet = false;
                     $this->selfraise= false;
+                    $this->suddendeath = false;
                     break;
                 case 'NG':
                 // New game was started, reset information stored in the client
@@ -56,6 +57,11 @@ class aiclient {
                     if ($cmd == 'BET') {
                         $this->bet = true;
                     }
+                    break;
+
+                case 'SD':
+                    printf("*** Suddent death can only check, call or fold\r\n");
+                    $this->suddendeath = true;
                     break;
                 case 'ID':
                     $this->id = $cmd[1];
@@ -76,15 +82,16 @@ class aiclient {
                                 $this->send("check");
                             }
                             else {
-                                if ($move <= 10) {
+                                if ($move <= 10 && !$this->suddendeath) {
                                     $this->send('bet');
                                 }
+                                else {$this->send('check'); }
                             }
                         }
 
                         else {
                             $move = rand(1, 10);
-                            if ($move <= 3 || $this->selfraise == true) {
+                            if ($move <= 3 && $this->bet == true || $this->selfraise == true) {
                                 $this->send('call');
                             }
                             else {
@@ -92,7 +99,7 @@ class aiclient {
                                     $this->send('call');
                                 }
                                 else {
-                                    if ($move < 7 && $this->selfraise == false) {
+                                    if ($move < 7 && $this->selfraise == false && $this->suddendeath == false) {
                                         $this->send('raise');
                                         $this->selfraise = true;
                                     }
