@@ -7,7 +7,7 @@
 */
 
 class aiv2 {
-    static $version = 2.25;
+    static $version = 2.50;
     public $connections;
     public $players = array();
     public $port = 8000;

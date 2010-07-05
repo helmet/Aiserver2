@@ -23,22 +23,29 @@ class poker extends aiv2 {
     public $deck;
     public $raises = null;
     public $bet = false;
-    public $fold;
-    public $out;
     public $playersingame;
     public $moneylog = array();
     public $newgame = false;
     public $playercalls = array();
+    public $return = 0;
     # Variables added for pots
     public $pot;
     public $playerpot = array();
     public $betamount;
 
-
-
     public function __construct() {
         parent :: __construct();
         printf ("Loaded the Texas Hold `em Module succesfully!\n");
+        if (!is_writeable('logs')) {
+            echo "Attempting to change the directory's permissions\n";
+            chmod('logs', 777);
+            if (!is_writable('logs')) {
+                die("Fatal error: The logs directory is not writable");
+            }
+        }
+        if (!function_exists('imagecreate')) {
+            die ("Fatal error: Texas Hold `em requires the GD-library to be enabled in PHP.ini");
+        }
 
         # Generate the deck only, this has to be done only once
         $types = array('spades', 'clubs', 'hearts', 'diamonds');
@@ -57,6 +64,9 @@ class poker extends aiv2 {
     // Checks if a player takes too long about his turn or whenever we can start the
     // game
     public function heartbeat() {
+        if ($this->return == true) {
+            return;
+        }
         // This is where the game logic is done, whenever the game is full
         // Start a new game
         if ( ($this->spots == $this->connections) && $this->game == 0) {
@@ -391,7 +401,7 @@ class poker extends aiv2 {
      * setRules
      * Sets up the rules and the amount of hands played for each game!
     */
-    public function setRules($players = 2, $playermoney  = 10, $bigblind = 1, $smallblind = .5, $games =5) {
+    public function setRules($players = 2, $playermoney  = 10, $bigblind = 1, $smallblind = .5, $games = 1000) {
         if ($players < 2) {
             printf("I'm sorry to report that Texas Hold `em requires at least 2 players.\n");
             die();
@@ -423,6 +433,12 @@ class poker extends aiv2 {
             $required = $this->spots - $this->connections;
             parent :: broadcast(sprintf("[SERVER] The game is waiting for %d more player%s", $required, $required != 1 ? 's' : ''));
         }
+
+        $required = $this->spots - $this->connections;
+        if ($this->return == true && $required == 0) {
+            $this->restore();
+            $this->newgame = true;
+        }
         return $player;
     }
 
@@ -433,6 +449,7 @@ class poker extends aiv2 {
         $required = $this->spots - $this->connections;
         parent :: broadcast(sprintf("[SERVER] The game is waiting for %d more player%s", $required, $required != 1 ? 's' : ''));
         $this->turn = 0;
+        $this->return = true;
     }
 
     /*
@@ -461,22 +478,15 @@ class poker extends aiv2 {
             // Player has sufficient funds, spread the money over the new pots created
             $this->pot += $amount;
             $player->money -= $amount;
-            if (!isSet($this->playerpot[$player->id])) {
-                $this->playerpot[$player->id] = $amount;
-            }
-            else {
-                $this->playerpot[$player->id] += $amount;
+            $this->playerpot[$player->id] += $amount;
+            if ($player->money == 0) {
+                $player->tmpout = true;
             }
         }
         else {
             // Player's money is not sufficient, create a new pot in the current game
             $this->pot += $player->money;
-            if (!isSet($this->playerpot[$player->id])) {
-                $this->playerpot[$player->id] = $player->money;
-            }
-            else {
-                $this->playerpot[$player->id] += $player->money;
-            }
+            $this->playerpot[$player->id] += $player->money;
             $player->money = 0;
             $player->tmpout = true;
         }
@@ -504,7 +514,7 @@ class poker extends aiv2 {
     public function playersLeftArray() {
         $players = array();
         foreach ($this->players as $pl) {
-            if (!$pl->out && !$pl->fold && !$pl->tmpout) {
+            if (!$pl->out && !$pl->fold) {
                 $players[] = $pl->id;
             }
         }
@@ -518,7 +528,14 @@ class poker extends aiv2 {
     private function winner($scores) {
         $max = 0;
         $playersinhand = $this->playersInHand();
+        $handout = array();
+        $return = array();
 
+        foreach ($this->players as $player) {
+            if (!$player->out) {
+                $handout[$player->id] = 0;
+            }
+        }
 
         while ($this->pot > 0) {
             $winner = null;
@@ -532,7 +549,7 @@ class poker extends aiv2 {
                         $winners = array();
                     }
                     else if ($value == $high) {
-                        $winners[] = $winner;
+                        if (isSet($winner) && !empty($winner)) { $winners[] = $winner; $winner = null; }
                         $winners[] = $pid;
                         $winner = null;
                     }
@@ -540,76 +557,99 @@ class poker extends aiv2 {
             }
 
             else {
-                foreach ($this->players as $player) {
-                    if (!$player->out) {
-                        $max = $this->playerpot[$player->id];
-                        if ($max > 0) {
-                            printf("$%0.2f is returned to %s\n", $max, parent :: playerName($player));
+                /*
+                 * Dividing the pot isn't entirely fair therefore we randomize the player that gets
+                 * the first share of the pot. this code is experimental and should be tested
+                */
+                $ids = $this->playersLeftArray();
+                shuffle($ids);
+                foreach ($ids as $id) {
+                    $max = $this->playerpot[$id];
+                    $player = $this->players[$id];
+                    if ($max > 0) {
+                        if ($max < $this->pot) {
                             $player->money += $max;
-                            $this->playerpot[$player->id] = 0;
+                            $return[$player->id] = $max;
+                            $this->pot -= $max;
+                            unset($this->playerpot[$player->id]);
                         }
+                        else {
+                            $player->money += $this->pot;
+                            $return[$player->id] = $this->pot;
+                            $this->pot = 0;
+                        }
+                        $this->playerpot[$player->id] = 0;
                     }
                 }
-
+                break;
             }
 
-            echo "Money left in pot: $" . $this->pot . "\n";
-
-            if ($winner && count($winners) == 0) {
+            if (!empty($winner) && count((array) $winners) == 0) {
                 $player = $this->players[$winner];
                 $max = $playersinhand * $this->playerpot[$player->id];
-                echo "Got a single winner for the amount of {$max} from the pot of " . $this->pot . "\n";
                 if ($max >= $this->pot) {
                     $player->money += $this->pot;
-                    printf("%s takes the complete pot of %0.2f\n", parent :: playerName($player), $this->pot);
+                    $handout[$player->id] += $this->pot;
                     $this->pot = 0;
                     $this->playerpot[$player->id] = 0;
                     unset($scores[$player->id]);
                 }
                 else {
-                    printf("%s can only take a certain amount (%0.2f) of %0.2f\n", parent :: playerName($player), $max, $this->pot);
                     $player->money += $max;
+                    $handout[$player->id] += $max;
                     $this->playerpot[$player->id] -= $max;
                     $this->pot -= $max;
                 }
-                echo "The pot now contains:"  . $this->pot . "\n";
                 if ($this->playerpot[$player->id] <= 0) {
                     unset($scores[$player->id]);
                 }
             }
             else {
-                echo "We got " . count($winners) . " winners\n";
                 $split = $this->pot / count($winners);
-                echo "An even split would mean: {$split}\n";
                 foreach ($winners as $id) {
+                    print_r($winners);
                     $player = $this->players[$id];
                     $max = $playersinhand * $this->playerpot[$player->id];
                     if ($max >= $split) {
                         $player->money += $split;
                         $this->playerpot[$player->id] -= $split;
                         $this->pot -= $split;
-                        printf("%s takes a fair share of the pot\n", parent :: playername($player));
+                        $handout[$player->id] += $split;
                     }
                     else {
                         $player->money += $max;
                         $this->playerpot[$player->id] -= $max;
+                        $handout[$player->id] += $max;
                         $this->pot -=$max;
                     }
 
-                    if ($this->playerpot[$player->id] <= 0) {
-                        unset($scores[$player->id]);
+                    if (isSet($this->playerpot[$player->id]) && $this->playerpot[$player->id] <= 0) {
+                        if (isSet($scores[$player->id])) {
+                            unset($scores[$player->id]);
+                        }
                     }
-
-                    echo "The pot now contains:"  . $this->pot . "\n";
                 }
 
             }
-
-
-
-
         }
-        $left =0;
+
+        foreach ($handout as $playerid => $value) {
+            if ($value > 0) {
+                $player = $this->players[$playerid];
+                $this->broadcast(sprintf("%s receives $%0.2f", parent :: playerName($player), $value),$player);
+                $this->send($player, sprintf("You receive $%0.2f", $value, $player->money));
+            }
+        }
+        foreach ($return as $playerid => $value) {
+            if ($value > 0) {
+                $player = $this->players[$playerid];
+                $this->broadcast(sprintf("$%0.2f is returned to %s", $value, parent :: playerName($player)), $player);
+                $this->send($player, sprintf("$%0.2f is returned to you!", $value));
+            }
+        }
+
+
+        $left = 0;
         foreach ($this->players as $pl) {
             if ($pl->money == 0 && !$pl->out) {
                 $this->broadcast(sprintf("%s is out of money and out of the game", parent :: playerName($pl)), $pl);
@@ -619,8 +659,9 @@ class poker extends aiv2 {
             }
             else {
                 if (!$pl->out) {
-                    $left ++;
-                    printf("%s is still in the game with $%0.3f\n", parent :: playerName($pl), $pl->money);
+                    $left++;
+                    $this->send($pl, sprintf("You now have $%0.2f", $pl->money));
+                    // printf("%s is still in the game with $%0.3f\n", parent :: playerName($pl), $pl->money);
                     $this->moneylog[$pl->id][] = $pl->money;
                 }
             }
@@ -632,67 +673,185 @@ class poker extends aiv2 {
             $player = $this->players[$winner];
             $this->broadcast("The game was won by %s after %d hands", parent :: playerName($player), $this->game);
             $this->broadcast("Generating log file...");
-            $gameid = strtotime('now');
-            $template = file_get_contents('data/log.html');
-            $fp = fopen(sprintf('logs/log_%d.html', $gameid), 'a');
-            require_once('data/jpgraph.php');
-            require_once('data/jpgraph_line.php');
-            $width = 900;
-            $height = 300;
-            $graph = new Graph($width, $height);
-            $graph->img->SetMargin(40,40,40,40);
-            $graph->SetShadow();
-
-            $graph->setScale('intlin');
-            $graph->title->Set('Amount of money per player, per hand');
-            $graph->xaxis->title->Set('Hand');
-            $graph->yaxis->title->Set('Money');
-            foreach ($this->moneylog as $id => $data) {
-                $p = $this->players[$id];
-                $lineplot = new LinePlot($data);
-                $lineplot->setweight ( $id );
-                $lineplot->SetLegend(parent :: playerName($p));
-                $graph->add($lineplot);
-            }
-            $graph->stroke(sprintf('logs/playermoney_%d.jpg', $gameid));
-            $this->newgame = false;
-            exit;
-
+            $this->generateLog($player);
         }
         else {
             // Continue with the next hand
-            if ($this->game <= $this->totalgames) {
+            if ($this->game < $this->totalgames) {
                 $this->newgame = true;
+            }
+            else {
+                $this->generateLog();
+                $this->newgame = false;
+                $this->turn = 0;
             }
         }
     }
 
-    private function grantpot($player) {
 
+    /*
+     * generateLog
+     * --
+     * Generates a logfile whenever a game has come to its end
+    */
+
+    public function generateLog($winner = false) {
+        $gameid = strtotime('now');
+        $template = file_get_contents('data/log.html');
+        $fp = fopen(sprintf('logs/log_%d.html', $gameid), 'a');
+
+        $htplayers = array();
+        foreach ($this->players as $pl) {
+            $htplayers[] = sprintf('<li>%s</li>', htmlspecialchars(parent :: playerName($pl)));
+
+        }
+        $players = implode("\n", $htplayers);
+        if ($winner) {
+            $data = sprintf("After %d hands played, the player <strong>%s</strong> won the total pot of <strong>$%0.2f</strong>", $this->game, parent :: playerName($winner), $winner->money);
+        }
+        else {
+            $htplayers = array();
+            foreach ($this->players as $pl) {
+                $htplayers[] = sprintf('<li>%s ($%0.2f)</li>', htmlspecialchars(parent :: playerName($pl)), $pl->money);
+            }
+            $htplayers = implode("\n", $htplayers);
+            $data = sprintf("After %d hands no winner was determined.<ol></ol>", $this->game, $htplayers);
+        }
+
+        $template = str_replace("{players}", $players, $template);
+        $template = str_replace("{gameid}", $gameid, $template);
+        $template = str_replace("{winner}", $data, $template);
+        $template = str_replace("{startmoney}", sprintf('%0.2f', $this->playermoney), $template);
+        $template = str_replace("{bigblind}", sprintf('%0.2f', $this->bigblind), $template);
+        $template = str_replace("{smallblind}", sprintf('%0.2f', $this->smallblind), $template);
+        $template = str_replace("{maxgames}", $this->totalgames, $template);
+        $template = str_replace("{winner}", $data, $template, $template);
+
+        fputs($fp, $template);
+        fclose($fp);
+
+        require_once('data/jpgraph.php');
+        require_once('data/jpgraph_line.php');
+        $width = 900;
+        $height = 300;
+        $graph = new Graph($width, $height);
+        $graph->img->SetMargin(40,40,40,40);
+        $graph->SetShadow();
+
+        $graph->setScale('intlin');
+        $graph->title->Set('Amount of money per player, per hand');
+        $graph->xaxis->title->Set('Hand');
+        $graph->yaxis->title->Set('Money');
+        foreach ($this->moneylog as $id => $data) {
+            $p = $this->players[$id];
+            $lineplot = new LinePlot($data);
+            $lineplot->setweight ( $id );
+            $lineplot->SetLegend(parent :: playerName($p));
+            $graph->add($lineplot);
+        }
+        $graph->stroke(sprintf('logs/playermoney_%d.jpg', $gameid));
+
+        // Pie graph, showing checks, folds, bets, wins, calls and raises
+        require_once ("data/jpgraph_pie.php");
+
+        // Create the Pie Graph.
+        $height = ceil(count($this->players) /2) * 440;
+        $graph = new PieGraph($width, $height);
+        $graph->SetShadow();
+
+        // Set A title for the plot
+        $graph->title->Set("Moves per user");
+
+        // Create plots
+        $size=0.20;
+        $x = array(0.25, 0.75);
+        $y = 220;
+        $i = 1;
+        $legend = array("Check","Call","Bet","Raise","Fold");
+        foreach ($this->players as $id => $player) {
+            $plot = new PiePlot(array($player->checks, $player->calls, $player->bets, $player->raises, $player->folds));
+            if ($player->id == 1) {
+                $plot->SetLegends($legend);
+            }
+            $plot->SetLabelType(PIE_VALUE_ADJPERCENTAGE);
+            $plot->SetSize($size);
+            $plot->SetCenter($x[$i -1], $y);
+            if ($i == 2) {
+                $i = 0;
+                $y += 420;
+            }
+            $i++;
+            $plot->title->Set(parent :: playerName($player));
+            $graph->add($plot);
+        }
+        $graph->stroke(sprintf('logs/playermoves_%d.jpg', $gameid));
+        $this->newgame = false;
+
+        // Remove the clients from the server
+        $this->broadcast("[SERVER] Thank you for playing Texas Hold`em (LIMIT)\n[SERVER] If you want to play another game, just reconnect to the server!");
+        $this->return = true;
+        foreach ($this->players as $player) {
+            $this->disconnect($player);
+        }
+        $this->return = true;
+        $this->restore();
     }
+
+    /*
+     *  Restore
+     * --
+     * Starts a new game as if nothing has happened :-)
+    */
+
+    private function restore() {
+        // Resets the game
+        $this->game = 0;
+        $this->turn = 0;
+        $this->pot = 0;
+        $this->playercalls = array();
+        $this->playerpot = array();
+        unset($this->betamount);
+
+        $this->newgame = false;
+        $this->bet = false;
+        $this->moves = 0;
+
+        $this->starter = null;
+
+        $this->turntimer = 0;
+        $this->return = false;
+        foreach ($this->players as $player) {
+            if ($player->id) {
+                $player->wins = $player->folds = $player->bets = $player->calls = $player->checks = $player->raises = 0;
+                $player->money = $this->playermoney;
+                $this->moneylog[$player->id] = array($player->money);
+            }
+        }
+        $this->broadcast("[SERVER] The game was succesfully reset.");
+    }
+
 
     /*
      * playerFold
      * is executed when a player folds or gets folded automatically by the system
     */
     private function playerFold($player) {
-        $this->fold++;
+        $player->folds++;
         $this->broadcast(sprintf("P=FOLD"));
         $this->broadcast(sprintf("%s folds.", parent :: playerName($player)));
         $player->fold = true;
-        $players_left = $this->playersingame - $this->fold;
-        if ($players_left == 1) {
+
+        if ($this->playersLeft() == 1) {
             // We have a winner, based on the amount of folds, determine the player that
             // didn't fold
-
-
             foreach ($this->players as $pl) {
-                if (!$pl->fold) {
-                    $this->grantpot($pl);
+                if (!$pl->fold && !$pl->out) {
+                    $score = array($pl->id => 120);
+                    $this->winner($score);
                     break;
                 }
             }
-            return;
+            return $pl;
         }
         # We still have multiple players in the game
         $this->nextTurn();
@@ -720,22 +879,24 @@ class poker extends aiv2 {
                     if ($this->bet) {
                         $bet = $this->getbet();
                         if ($player->money <= $bet) {
-                            // Have to fix this function here, because I don't know
-                            // what happens when the player can't afford the call
-                            // suppose he/she has to go all-in
+                            // Player doesn't have the money to call the bet and has to go ALL-IN
                             $this->broadcast("P=CALL");
                             $this->broadcast(sprintf("%s is forced to go ALL-IN with only $%0.2f left", parent :: playerName($player), $player->money));
                             $this->betamount=  $player->money;
                             $this->addMoney($player, $bet);
                             $this->playercalls[$player->id] = true;
+                            $player->calls++;
                             $this->nextTurn();
+                            return;
                         }
                         else {
                             $this->broadcast("P=CALL");
                             $this->broadcast(sprintf("%s CALLS the bet", parent :: playerName($player)));
                             $this->addMoney($player, $bet);
                             $this->playercalls[$player->id] = true;
+                            $player->calls++;
                             $this->nextTurn();
+                            return;
                         }
                     }
                     else {
@@ -745,7 +906,6 @@ class poker extends aiv2 {
                 else {
                     $this->send($player, "Sorry, it is not your turn yet!");
                 }
-                break;
                 break;
 
             case 'bet':
@@ -782,6 +942,7 @@ class poker extends aiv2 {
                                 $this->betamount = $player->money;
                                 $this->playercalls[$player->id] = true;
                                 $this->bet = true;
+                                $player->bets++;
                                 $this->nextTurn();
                                 return;
                             }
@@ -795,8 +956,11 @@ class poker extends aiv2 {
                             $this->broadcast(sprintf("%s places a bet of $%0.2f", parent :: playerName($player), $bet));
                             $this->resetplayercalls();
                             $this->playercalls[$player->id] = true;
+                            $player->bets++;
                             $this->addMoney($player, $bet);
                             $this->nextTurn();
+
+
                         }
                         else {
                             if ($player->money >= 0) {
@@ -805,6 +969,7 @@ class poker extends aiv2 {
                                 $this->betamount = $player->money;
                                 $this->broadcast(sprintf("%s goes all in with a dazzling amount of $%0.2f", parent :: playerName($player), $player->money));
                                 $this->addMoney($player, $bet);
+                                $player->bets++;
                                 $this->nextTurn();
                             }
                         }
@@ -830,9 +995,72 @@ class poker extends aiv2 {
                         }
 
                         // TODO: write the raise function :P
-                        
+                        if ($this->moves == 1) {
+                            $bet = $this->bigblind;
+                            if ($player->id == $this->playerblinds[0]) {
+                                $bet -= $this->smallblind;
+                            }
+                            if ($player->id == $this->playerblinds[1]) {
+                                $bet = 0;
+                            }
 
+                            if ($player->money >= $bet && $bet != 0) {
+                                $this->addMoney($player, $bet);
+                                $this->playercalls[$player->id] = true;
+                                $this->broadcast(sprintf("%s automatically pays %0.2f in order to pay the big blind\n", parent :: playerName($player), $bet));
+                                $this->playercalls[$player->id] = true;
+                            }
 
+                            else if ($player->money <= $bet && $bet != 0) {
+                                $this->playercalls[$player->id] = true;
+                                $this->broadcast(sprintf("It is all or nothing for %s who goes all-in with %0.2f\nP=RAISE", parent :: playerName($player), $player->money));
+                                $this->addMoney($player, $bet);
+                                $this->betamount = $player->money;
+                                $this->playercalls = array();
+                                $this->playercalls[$player->id] = true;
+                                $this->bet = true;
+                                $player->raiseturn = true;
+                                $player->raises++;
+
+                                $this->nextTurn();
+                                return;
+                            }
+
+                        }
+                        $bet = $tmp = $this->getbet();
+
+                        if ($this->betamount) {
+                            unset($this->betamount);
+                        }
+                        $add = $this->getbet();
+                        $bet += $this->getbet();
+                        if ($player->money >= $bet) {
+                            $this->betamount = $bet;
+                            $this->broadcast(sprintf("%s CALLS the bet of %0.2f and raises with %0.2f", parent :: playerName($player), $tmp, $add));
+                            $this->playercalls = array();
+                            $this->playercalls[$player->id] = true;
+                            $player->raiseturn = true;
+                            $this->bet = true;
+                            $player->raises++;
+                            $this->addMoney($player, $bet);
+                            $this->nextTurn();
+                            return;
+
+                        }
+                        else {
+                            $bet += $player->money;
+                            $this->betamount = $bet;
+                            $this->playercalls = array();
+                            $this->broadcast(sprintf("%s CALLS the bet of %0.2f and goes ALL-IN with %0.2f", parent :: playerName($player), $tmp, $add));
+                            $this->playercalls[$player->id] = true;
+                            $player->raiseturn = true;
+                            $this->bet = true;
+                            $player->raises++;
+                            $this->addMoney($player, $bet);
+                            $this->nextTurn();
+                            return;
+
+                        }
                     }
                 }
                 else {
@@ -862,6 +1090,7 @@ class poker extends aiv2 {
                             $this->addMoney($player, $bet);
                             $this->playercalls[$player->id] = true;
                             $this->broadcast(sprintf("%s automatically pays %0.2f in order to pay the big blind\nP=CHECK", parent :: playerName($player), $bet));
+                            $player->checks++;
                             $this->playercalls[$player->id] = true;
                             $this->nextTurn();
                             return;
@@ -870,6 +1099,7 @@ class poker extends aiv2 {
                         if ($player->money <= $bet && $bet != 0) {
                             $this->playercalls[$player->id] = true;
                             $this->broadcast(sprintf("It is all or nothing for %s who goes all-in with %0.2f\nP=CHECK", parent :: playerName($player), $player->money));
+                            $player->checks++;
                             $this->addMoney($player, $bet);
                             $this->playercalls[$player->id] = true;
                             $this->nextTurn();
@@ -881,8 +1111,6 @@ class poker extends aiv2 {
                     $this->broadcast(sprintf("%s checks", parent :: playerName($player)));
                     $this->playercalls[$player->id] = true;
                     $this->nextTurn();
-
-
                 }
                 else {
                     $this->send($player, "Sorry, it is not your turn yet!");
@@ -902,7 +1130,7 @@ class poker extends aiv2 {
      * Returns the amount of BET that is used for the current turn
     */
     public function getbet() {
-        if ($this->betamount) {
+        if (isSet($this->betamount)) {
             return $this->betamount;
         }
         $money = false;
@@ -923,9 +1151,8 @@ class poker extends aiv2 {
      * Gets the next player that is still in the game
     */
     public function getNextPlayer($id) {
-        if (is_object($id)) {
-            $id = $id->id;
-        }
+
+
         // Whenever no blind is set e.g. new game
         if ($id == 0) {
             if (!$this->playerblinds[0]) {
@@ -940,7 +1167,7 @@ class poker extends aiv2 {
         for ($i = $id; $i <= $this->connections; $i++) {
             $player = $this->players[$i];
             # if the player is in the game and NOT this player
-            if (!$player->out && $player->id != $id && !$player->tmpout) {
+            if (!$player->out && $player->id != $id && !$player->tmpout && !$player->fold) {
                 return $player;
                 break;
             }
@@ -950,7 +1177,7 @@ class poker extends aiv2 {
             for ($i = 1;$i < $id; $i++) {
                 $player = $this->players[$i];
                 # if the player is in the game and NOT this player and is not temporarily out
-                if (!$player->out && $player->id != $id && !$player->tmpout) {
+                if (!$player->out && $player->id != $id && !$player->tmpout && !$player->fold) {
                     return $player;
                     break;
                 }
@@ -975,9 +1202,7 @@ class poker extends aiv2 {
 
     public function resetgame() {
         // Resets a game, removing bets and pots
-        $this->fold = 0;
         $this->moves = 0;
-        $this->raises = 0;
         $this->bet = false;
         $this->betamount = null;
         $this->playersingame = $this->connections;
@@ -985,6 +1210,9 @@ class poker extends aiv2 {
         $this->currentpot = null;
         $this->gamecardstable = array();
         $this->playerpot = array();
+        foreach ($this->players as $pl) {
+            $this->playerpot[$pl->id] = 0;
+        }
         # Remove any previous folds
         foreach ($this->players as $i => $pl) {
             $pl->fold = false;
@@ -1020,13 +1248,13 @@ class poker extends aiv2 {
             $this->playerblinds = array(0,0);
         }
 
-        $this->broadcast(sprintf("NG=%d\nPlaying hand: %d/%d (%2.0f%%)", $this->game, $this->game, $this->totalgames, ($this->game / $this->totalgames) * 100));
+        $this->broadcast(sprintf("NG=%d\nPlaying hand: %d/%d (%0.2f%%)", $this->game, $this->game, $this->totalgames, ($this->game / $this->totalgames) * 100));
         $i = 0;
 
         while ($i < 2) {
             $player = $this->getNextPlayer($this->playerblinds[$i]);
             if ($i == 0) {
-                $this->starter = $player;
+                $this->starter = $player->id;
             }
             $blind = $i == 0 ? $this->smallblind : $this->bigblind;
             if ($player->money >= $blind) {
@@ -1066,9 +1294,15 @@ class poker extends aiv2 {
         $this->moves++;
         $this->turntimer = 0;
         $this->bet = false;
-        $this->raises = 0;
         $this->resetplayercalls();
         $this->broadcast(sprintf("M=%d", $this->moves));
+        foreach ($this->players as $player) {
+            $player->raiseturn = false;
+            if ($player->money == 0) {
+                $player->tmpout = true;
+            }
+
+        }
 
         switch ($this->moves) {
             case 1:
@@ -1111,6 +1345,7 @@ class poker extends aiv2 {
                 break;
 
             case 5:
+            default:
                 $scores = array();
                 foreach ($this->players as $pl) {
                     if (!$pl->out) {
@@ -1121,9 +1356,7 @@ class poker extends aiv2 {
                 }
                 $this->winner($scores);
                 return true;
-
                 break;
-
         }
         $this->sendplayercards();
         $this->nextTurn();
@@ -1140,7 +1373,7 @@ class poker extends aiv2 {
         }
 
         # Is the turn over?
-        if (array_sum($this->playercalls) == $this->playersingame) {
+        if (array_sum($this->playercalls) == $this->playersLeft()) {
             //$player = $this->getNextPlayer($player->id);
             $pl = $this->starter ;
             $pl = $this->players[$pl];
@@ -1148,24 +1381,25 @@ class poker extends aiv2 {
                 $this->turn = $pl->id;
             }
             else {
-                $this->turn = $this->getNextPlayer($pl->id);
+                $player = $this->getNextPlayer($pl->id);
+                $this->turn = $player->id;
             }
             $this->progress();
             return;
         }
         #
-        if ($this->playersInHand() ==  1) {
-
+        $player = $this->players[$this->turn];
+        $next = $this->getNextPlayer($player->id);
+        if (!$next) {
+            $this->progress();
+            return;
         }
-
-        $player = $this->getNextPlayer($this->turn);
-        $this->turn = $player->id;
+        $this->turn = $next->id;
         $this->turntimer = 0;
         # Tell the players that the turn belongs to $player->id
-        $this->broadcast(sprintf("T=%d", $player->id));
-        $this->send($player, "It is your turn.. you have 20 seconds to make a move!");
+        $this->broadcast(sprintf("T=%d", $next->id));
+        $this->send($next, "It is your turn.. you have 20 seconds to make a move!");
     }
-
 }
 
 /*
@@ -1181,10 +1415,10 @@ class pokerplayer extends player {
     public $raiseturn = false;
     // Statistical information is stored per player
     public $wins;
-    public $checks;
-    public $bets;
-    public $folds;
-    public $calls;
-    public $raises;
+    public $checks = 0;
+    public $bets = 0;
+    public $folds  = 0;
+    public $calls = 0;
+    public $raises = 0;
 }
 ?>

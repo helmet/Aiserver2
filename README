@@ -5,10 +5,16 @@ AIServer2 is a small but handy platform that allows developers to create their
 own socket-based games. It was custom-built for a schoolproject on Tilburg
 University for the course Computer Games.
 
-The Texas Hold`em module included servers both as an example and as my
+The Texas Hold`em module included serves both as an example and as my
 end-project for this course. It allows multiple clients to play a game of Poker
 and is intended to provide future students with a platform on which their
 programs can compete against eachother.
+
+REQUIREMENTS:
+    - The PHP-socket library needs to be loaded in order for AIServer to run.
+    - The texas hold`em module requires the PHP-Module GD to generate graphs,
+      Both modules are included in PHP by default but should be enabled in PHP.ini
+
 
 FAQ:
 1.  Which PHP-version is required to run this application?

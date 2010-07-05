@@ -72,24 +72,36 @@ class aiclient {
                         */
                         if (!$this->bet) {
                             $move = rand(1, 10);
-                            if ($move != 10) {
+                            if ($move <= 6) {
                                 $this->send("check");
                             }
                             else {
-                                $this->send('bet');
+                                if ($move <= 10) {
+                                    $this->send('bet');
+                                }
                             }
                         }
 
                         else {
                             $move = rand(1, 10);
-                            if ($move <= 6 || $this->selfraise == true) {
+                            if ($move <= 3 || $this->selfraise == true) {
                                 $this->send('call');
                             }
-                            else
-                            {
-                                $this->send('call');
-                                //$this->Send('raise');
-                                //$this->selfraise = true;
+                            else {
+                                if ($move < 4) {
+                                    $this->send('call');
+                                }
+                                else {
+                                    if ($move < 7 && $this->selfraise == false) {
+                                        $this->send('raise');
+                                        $this->selfraise = true;
+                                    }
+                                    else {
+                                        $this->send('fold');
+                                    }
+
+                                }
+
                             }
                         }
                     }

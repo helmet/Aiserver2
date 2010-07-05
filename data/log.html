@@ -25,18 +25,23 @@
                 <li>Starting money: ${startmoney}</li>
                 <li>Small blind: ${smallblind}</li>
                 <li>Big blind: ${bigblind}</li>
-                <li>Maximum amount of hands: ${maxgames}</li>
+                <li>Maximum amount of hands: {maxgames}</li>
             </ul>
 
             <h2>Players:</h2>
             <ol>
-                <li>Helmet</li>
-                <li>Ai for games #2</li>
+                {players}
             </ol>
 
-            <p>After ${gamesplayed} game(s) played, the player <strong>${winner}</strong> won the total pot of <strong>${pot}</strong></p>
+            <p>{winner}</p>
 
             <h2>Money per round per player</h2>
+            <img src="playermoney_{gameid}.jpg" alt="Money per player, per game" />
+
+            <h2>Moves per player</h2>
+            <img src="playermoves_{gameid}.jpg" alt="Moves per player, per game" />
+
+
         </div>
 
     </body>
