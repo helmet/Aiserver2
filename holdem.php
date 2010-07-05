@@ -910,7 +910,7 @@ class poker extends aiv2 {
                         $this->send($player, "Another player already made a bet!");
                         $this->send($player, "You can either CALL, RAISE or FOLD");
                     }
-                    else {
+                    else {                    
                         // Player is still in the game but the only player left
                         if ($this->playersLeft() == 1 && $this->playersInHand() > 1) {
                             $this->send($player, "No other players can CALL a bet, you can only CHECK, CALL or FOLD!");
@@ -1274,6 +1274,11 @@ class poker extends aiv2 {
 
         while ($i < 2) {
             $player = $this->getNextPlayer($this->playerblinds[$i]);
+            if (!$player)
+            {
+                echo "This is weird: " . playersLeft();
+            }
+
             if ($i == 0) {
                 $this->starter = $player->id;
             }
@@ -1288,6 +1293,7 @@ class poker extends aiv2 {
             else {
                 $this->broadcast(sprintf("%s can't afford the blind of $%0.2f and is forced ALL-IN with %0.2f",  parent :: playerName($player), $blind, $player->money));
                 $this->playerblinds[$i] = $player->id;
+                $player->tmpout = true;
                 $this->addMoney($player, $blind);
             }
             $i++;
@@ -1369,7 +1375,7 @@ class poker extends aiv2 {
             default:
                 $scores = array();
                 foreach ($this->players as $pl) {
-                    if (!$pl->out) {
+                    if (!$pl->out && !$pl->fold && $this->playerpot[$pl->id] > 0) {
                         $playercards = array_merge($pl->cards, $this->gamecardstable);
                         $score = $this->calcPoker($playercards, $pl);
                         $scores[$pl->id] = $score;
