@@ -1,4 +1,10 @@
 <?php
+/*
+ * Remember that this client is just a demo-client, it utilizes little to no
+ * AI and doesnot compute the score for each hand or the probability the hand
+ * can win.
+ */
+
 class aiclient {
     public $name;
     public $conn;
@@ -7,7 +13,7 @@ class aiclient {
 
     # Game specific
     public $stage; // Stage of the game
-    public $bet;
+    public $bet = false;
     public $selfraise = false;
     public $suddendeath;
 
@@ -60,7 +66,7 @@ class aiclient {
                     break;
 
                 case 'SD':
-                    printf("*** Suddent death can only check, call or fold\r\n");
+                    printf("*** Sudden death can only check, call or fold\r\n");
                     $this->suddendeath = true;
                     break;
                 case 'ID':
@@ -76,40 +82,35 @@ class aiclient {
                          * program logic, at this moment it will randomly choose
                          * an action for good or for worse... you have been warned :)
                         */
-                        if (!$this->bet) {
-                            $move = rand(1, 10);
-                            if ($move <= 6) {
-                                $this->send("check");
-                            }
-                            else {
-                                if ($move <= 10 && !$this->suddendeath) {
-                                    $this->send('bet');
-                                }
-                                else {$this->send('check'); }
-                            }
+
+                        if (!$this->bet)
+                        {
+                            // No bets were made so it's always safe to check
+                            // do so in 80% of the cases, otherwise send a BET
+                            $move = rand(1,10);
+                            if ($move > 8 && !$this->suddendeath) { $this->send('bet'); $this->bet = true; return; }
+                            $this->send('check');
                         }
 
-                        else {
-                            $move = rand(1, 10);
-                            if ($move <= 3 && $this->bet == true || $this->selfraise == true) {
+                        else
+                        {
+                            // There were bets in this game, we need some logic here
+                            $move = rand(1,10);
+                            if ($move <= 4 && $this->selfraise == true)
+                            {
+                                // We can't raise ourselves anymore
                                 $this->send('call');
+                                return;
                             }
-                            else {
-                                if ($move < 4) {
-                                    $this->send('call');
-                                }
-                                else {
-                                    if ($move < 7 && $this->selfraise == false && $this->suddendeath == false) {
-                                        $this->send('raise');
-                                        $this->selfraise = true;
-                                    }
-                                    else {
-                                        $this->send('fold');
-                                    }
-
-                                }
-
+                            if ($move <= 8 && !$this->suddendeath && !$this->selfraise)
+                            {
+                                $this->send('raise');
+                                $this->selfraise = true;
+                                return;
                             }
+
+                            // Play it safe, fold!
+                            $this->send('fold');
                         }
                     }
                     break;
@@ -141,6 +142,5 @@ class aiclient {
 // Initialize our client
 $client = new aiclient();
 $client->windows = true;
-$client->name = "Test #1";
 $client->connect('localhost', 8000);
 ?>
