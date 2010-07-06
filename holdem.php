@@ -640,6 +640,7 @@ class poker extends aiv2 {
         foreach ($this->players as $pl) {
             if ($pl->money == 0 && !$pl->out) {
                 $this->broadcast(sprintf("%s is out of money and out of the game", parent :: playerName($pl)), $pl);
+                $this->broadcast(sprintf("OUT=%d", $pl->id));
                 $this->send($pl, "Sorry, you are out of money and thus out of the game :(");
                 $pl->out = true;
                 $this->moneylog[$pl->id][] = 0;
@@ -647,6 +648,7 @@ class poker extends aiv2 {
             else {
                 if (!$pl->out) {
                     $left++;
+                    $this->send($pl, sprintf("OM=%0.2f", $pl->money));
                     $this->send($pl, sprintf("You now have $%0.2f", $pl->money));
                     $pot += $pl->money;
                     // printf("%s is still in the game with $%0.3f\n", parent :: playerName($pl), $pl->money);
@@ -974,8 +976,6 @@ class poker extends aiv2 {
                             $player->bets++;
                             $this->addMoney($player, $bet);
                             $this->nextTurn();
-
-
                         }
                         else {
                             if ($player->money >= 0) {
@@ -1070,8 +1070,8 @@ class poker extends aiv2 {
                         else {
                             $bet += $player->money;
                             $this->betamount = $bet;
-                            $this->playercalls = array();
                             $this->broadcast(sprintf("%s CALLS the bet of %0.2f and goes ALL-IN with %0.2f", parent :: playerName($player), $tmp, $add));
+                            $this->playercalls = array();
                             $this->playercalls[$player->id] = true;
                             $player->raiseturn = true;
                             $this->bet = true;
@@ -1079,7 +1079,6 @@ class poker extends aiv2 {
                             $this->addMoney($player, $bet);
                             $this->nextTurn();
                             return;
-
                         }
                     }
                 }
@@ -1314,31 +1313,6 @@ class poker extends aiv2 {
         }
 
     }
-    /*
-        while ($i < 2) {
-            $player = $this->getNextPlayer($this->playerblinds[$i]);
-
-            if ($i == 0) {
-                $this->starter = $player->id;
-            }
-            $blind = $i == 0 ? $this->smallblind : $this->bigblind;
-            if ($player->money >= $blind) {
-                $this->addMoney($player, $blind);
-                $this->broadcast("SB=%d", $player->id);
-                $this->broadcast(sprintf("%s has paid the %s blind", parent :: playerName($player), $i == 0 ? 'SMALL' : 'BIG'), $player);
-                $this->send($player, sprintf("You paid the %s blind and have $%0.2f left", $i == 0 ? 'SMALL' : 'BIG', $player->money));
-                $this->playerblinds[$i] = $player->id;
-            }
-            else {
-                $this->broadcast(sprintf("%s can't afford the blind of $%0.2f and is forced ALL-IN with %0.2f",  parent :: playerName($player), $blind, $player->money));
-                $this->playerblinds[$i] = $player->id;
-                $this->addMoney($player, $blind);
-            }
-            $i++;
-        }
-        $this->turn = $this->starter = $this->playerblinds[0];
-        $this->progress();
-    }*/
 
     /*
      * sendplayer cards
@@ -1346,6 +1320,7 @@ class poker extends aiv2 {
     */
     public function sendplayercards($message = "You hold the cards: %s") {
         foreach ($this->players as $player) {
+            $this->send($player, sprintf("C=%s",  implode(', ', $player->cards)));
             $this->send($player, sprintf($message, implode(', ', $player->cards)));
         }
     }
@@ -1399,6 +1374,8 @@ class poker extends aiv2 {
                     }
                 }
                 $this->broadcast(sprintf("The flop reveals: %s", implode(', ', $this->gamecardstable)));
+                $this->broadcast(sprintf("CT=%s", implode(', ', $this->gamecardstable)));
+
                 break;
 
             case 3:
@@ -1406,6 +1383,7 @@ class poker extends aiv2 {
                 array_shift($this->gamecards);
                 $this->gamecardstable[] = $this->gamecards[0];
                 $this->broadcast(sprintf("The %s-card reveals: %s", $this->moves == 3 ? 'turn' : 'river', implode(', ', $this->gamecardstable)));
+                $this->broadcast(sprintf("CT=%s", implode(', ', $this->gamecardstable)));
                 break;
 
             case 5:
