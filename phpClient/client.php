@@ -76,11 +76,11 @@ class aiclient {
                     printf("** Playing with id: %d\r\n", intval($cmd[1]));
                     break;
 
-                case 'C':
+                case 'CT':
                     $this->cardstable = explode(",", $cmd[1]);
                     break;
 
-                case 'CT':
+                case 'C':
                     $this->mycards = explode(",", $cmd[1]);
                     break;
 
