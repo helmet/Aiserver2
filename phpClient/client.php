@@ -16,6 +16,8 @@ class aiclient {
     public $bet = false;
     public $selfraise = false;
     public $suddendeath;
+    public $mycards;
+    public $cardstable;
 
 
     // Constructor, sets up some defaults
@@ -72,6 +74,14 @@ class aiclient {
                 case 'ID':
                     $this->id = $cmd[1];
                     printf("** Playing with id: %d\r\n", intval($cmd[1]));
+                    break;
+
+                case 'C':
+                    $this->cardstable = explode(",", $cmd[1]);
+                    break;
+
+                case 'CT':
+                    $this->mycards = explode(",", $cmd[1]);
                     break;
 
                 case 'T':

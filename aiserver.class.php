@@ -71,7 +71,7 @@ class aiv2 {
                     }
                     elseif ($this->connections == $this->maxconnections) {
                         $remove = socket_accept($this->socket);
-                        socket_write($remove, "AIEngine:\r\nYou have been removed of this server: The server is full!");
+                        socket_write($remove, "AIEngine:\r\nYou have been removed from this server: The server is full!");
                         socket_close($remove);
                         break;
                     }
