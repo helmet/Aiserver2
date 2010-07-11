@@ -1337,12 +1337,13 @@ class poker extends aiv2 {
 
         $this->starter = $bb->id;
         $this->playerblinds = $blinds = array($sb->id, $bb->id);
+        print_r($blinds);
         foreach ($blinds as $i => $blind) {
-            $player = $this->players[$this->playerblinds[$i]];
+            $player = $this->players[$blind];
             $blind = $i == 0 ?  $this->smallblind : $this->bigblind;
             if ($player->money >= $blind) {
                 $this->addMoney($player, $blind);
-                $this->broadcast("SB=%d", $player->id);
+                $this->broadcast("%sB=%d", $i == 0 ? 'S' : 'B', $player->id);
                 $this->broadcast(sprintf("%s has paid the %s blind", parent :: playerName($player), $i == 0 ? 'SMALL' : 'BIG'), $player);
                 $this->send($player, sprintf("You paid the %s blind and have $%0.2f left", $i == 0 ? 'SMALL' : 'BIG', $player->money));
                 $this->playerblinds[$i] = $player->id;
@@ -1356,10 +1357,10 @@ class poker extends aiv2 {
                 $this->playerblinds[$i] = $player->id;
                 $this->addMoney($player, $blind);
             }
-            $this->turn = $this->starter = $this->playerblinds[0];
-            $this->progress();
         }
-
+        $this->turn = $this->starter = $this->playerblinds[0];
+        $this->progress();
+        
     }
 
     /*
@@ -1385,6 +1386,7 @@ class poker extends aiv2 {
         $this->bet = false;
         $this->resetplayercalls();
         $this->broadcast(sprintf("M=%d", $this->moves));
+
         foreach ($this->players as $player) {
             $player->raiseturn = false;
             if ($player->money == 0) {
@@ -1392,6 +1394,7 @@ class poker extends aiv2 {
             }
 
         }
+        printf("G=%d, M=%d: The pot contains: %0.2f\n", $this->game, $this->moves, $this->pot);
 
         switch ($this->moves) {
             case 1:
