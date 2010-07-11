@@ -1337,7 +1337,6 @@ class poker extends aiv2 {
 
         $this->starter = $bb->id;
         $this->playerblinds = $blinds = array($sb->id, $bb->id);
-        print_r($blinds);
         foreach ($blinds as $i => $blind) {
             $player = $this->players[$blind];
             $blind = $i == 0 ?  $this->smallblind : $this->bigblind;
@@ -1394,7 +1393,6 @@ class poker extends aiv2 {
             }
 
         }
-        printf("G=%d, M=%d: The pot contains: %0.2f\n", $this->game, $this->moves, $this->pot);
 
         switch ($this->moves) {
             case 1:
